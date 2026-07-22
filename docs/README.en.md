@@ -19,6 +19,11 @@ VM.
 >
 > Quick-start with all prerequisites: [quickstart.md](quickstart.md) (EN) &middot; [schnellstart.md](schnellstart.md) (DE)
 
+> **:cloud: Multi-cloud (Azure/AWS/GCP) with Bicep, Terraform & Ansible.**
+> The service joins new Windows VMs on **any** platform offline and without
+> credentials on the target. Ready-made examples with Mermaid diagrams:
+> **[multi-cloud.en.md](multi-cloud.en.md)** (EN) &middot; [multi-cloud.md](multi-cloud.md) (DE).
+
 ## Problem
 
 VMware creates new VMs. They should be joined into the respective target domain
@@ -77,7 +82,9 @@ flowchart LR
 > AHV**, **Proxmox/KVM**, **physical machines** (MDT/SCCM/OSD), **cloud VMs**
 > (Azure/AWS/GCP), and tools such as **Packer**, **Terraform**, **Ansible** or
 > **cloud-init/unattend.xml**. Because the join happens offline, a target
-> **without AD connectivity** at provisioning time also works.
+> **without AD connectivity** at provisioning time also works. Concrete
+> **multi-cloud VM** examples (Azure/AWS/GCP) with **Bicep, Terraform and
+> Ansible**, including Mermaid diagrams: [multi-cloud.en.md](multi-cloud.en.md).
 
 ## Project structure
 
@@ -335,6 +342,7 @@ IT-Grundschutz building blocks.
 
 - [quickstart.md](quickstart.md) &middot; [schnellstart.md](schnellstart.md)
 - [solution-variants.md](solution-variants.md) &middot; [loesungsvarianten.md](loesungsvarianten.md)
+- [multi-cloud.en.md](multi-cloud.en.md) &middot; [multi-cloud.md](multi-cloud.md)
 - [README.md](../README.md)
 - [Microsoft Learn: Offline Domain Join (djoin)](https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/offline-domain-join--djoin--step-by-step)
 

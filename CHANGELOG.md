@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `docs/multi-cloud.md` (DE) and `docs/multi-cloud.en.md` (EN): a guide showing
+  how to drive the web service from **Bicep, Terraform and Ansible** to
+  offline-domain-join **multi-cloud Windows VMs** (Azure, AWS, GCP), with Mermaid
+  diagrams and end-to-end samples. Linked from the READMEs (top callout,
+  platform-independent note, resource tables, See Also) and the docs index.
+
 ## [1.6.9] - 2026-07-22
 
 ### Added

@@ -19,6 +19,11 @@ ohne Anmeldeinformationen auf der Ziel-VM.
 >
 > Schnellstart mit allen Voraussetzungen: [docs/schnellstart.md](docs/schnellstart.md) (DE) &middot; [docs/quickstart.md](docs/quickstart.md) (EN)
 
+> **:cloud: Multi-Cloud (Azure/AWS/GCP) mit Bicep, Terraform & Ansible.**
+> Der Dienst joint neue Windows-VMs in **jeder Cloud** offline und ohne
+> Anmeldeinformationen auf dem Ziel. Fertige Beispiele mit Mermaid-Diagrammen:
+> **[docs/multi-cloud.md](docs/multi-cloud.md)** (DE) &middot; [docs/multi-cloud.en.md](docs/multi-cloud.en.md) (EN).
+
 ## Problem
 
 VMware erstellt neue VMs. Diese sollen aus einer PowerShell-Session auf einem
@@ -80,7 +85,9 @@ flowchart LR
 > Rechner** (MDT/SCCM/OSD), **Cloud-VMs** (Azure/AWS/GCP) sowie Tools wie
 > **Packer**, **Terraform**, **Ansible** oder **cloud-init/unattend.xml**. Da der
 > Join offline erfolgt, funktioniert auch ein Ziel **ohne AD-Konnektivitaet** zum
-> Zeitpunkt der Bereitstellung.
+> Zeitpunkt der Bereitstellung. Konkrete Beispiele fuer **Multi-Cloud-VMs**
+> (Azure/AWS/GCP) mit **Bicep, Terraform und Ansible** inklusive Mermaid-Diagramme:
+> [docs/multi-cloud.md](docs/multi-cloud.md).
 
 ## Projektstruktur
 
@@ -122,6 +129,8 @@ OfflineJoinService/
 | [docs/solution-variants.md](docs/solution-variants.md) | Doku | Englische Fassung des Variantenvergleichs. |
 | [docs/schnellstart.md](docs/schnellstart.md) | Doku | Installations-Schnellstart mit allen Voraussetzungen (Deutsch). |
 | [docs/quickstart.md](docs/quickstart.md) | Doku | Installations-Schnellstart mit allen Voraussetzungen (Englisch). |
+| [docs/multi-cloud.md](docs/multi-cloud.md) | Doku | Multi-Cloud-VMs (Azure/AWS/GCP) mit Bicep, Terraform und Ansible &ndash; Beispiele + Mermaid-Diagramme (Deutsch). |
+| [docs/multi-cloud.en.md](docs/multi-cloud.en.md) | Doku | Englische Fassung der Multi-Cloud-Beispiele. |
 | [src/OfflineJoin/OfflineJoin.psd1](src/OfflineJoin/OfflineJoin.psd1) | Modul-Manifest | Metadaten und Export der Kernfunktionen. |
 | [src/OfflineJoin/OfflineJoin.psm1](src/OfflineJoin/OfflineJoin.psm1) | Modul | Kapselt `djoin`: Eingabevalidierung, Blob-Erzeugung, unattend-Fragment. |
 | [src/WebService/Start-OfflineJoinService.ps1](src/WebService/Start-OfflineJoinService.ps1) | Dienst | Pode-REST-Dienst `POST /api/v1/provision` (TLS, API-Key, Allow-List, Audit) plus optionale Web-UI `GET /ui`. |
@@ -274,6 +283,7 @@ Das Architekturdiagramm oben bildet genau diesen Ablauf ab (Knoten
 **Referenzen:**
 
 - [VMware Aria Automation (vRA / VCF Automation) – Dokumentation](https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation.html)
+
 - [VMware Aria Automation Orchestrator (vRO) – Dokumentation](https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation-orchestrator.html)
 - [VMware vSphere – Dokumentation (guestinfo / VM-Advanced-Settings, VMware Tools)](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-1.html)
 
@@ -340,6 +350,7 @@ IT-Grundschutz-Bausteinen zu.
 
 - [docs/schnellstart.md](docs/schnellstart.md) &middot; [docs/quickstart.md](docs/quickstart.md)
 - [docs/loesungsvarianten.md](docs/loesungsvarianten.md) &middot; [docs/solution-variants.md](docs/solution-variants.md)
+- [docs/multi-cloud.md](docs/multi-cloud.md) &middot; [docs/multi-cloud.en.md](docs/multi-cloud.en.md)
 - [docs/README.en.md](docs/README.en.md)
 
 ### Offizielle Microsoft-Dokumentation (Offline Domain Join / djoin)
