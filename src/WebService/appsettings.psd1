@@ -44,12 +44,21 @@
         }
     )
 
-    # Optional browser form for AD admins. Requires IIS Windows Authentication
-    # hosting (see the quick-start section "Web UI for AD admins"). Only members
-    # of AdminGroup may open the form; the server re-validates every request
-    # against AllowedTargets above. Disabled by default.
+    # Optional browser form for AD admins. Only members of AdminGroup may open
+    # the form; the server re-validates every request against AllowedTargets
+    # above. Disabled by default.
+    #
+    # AuthMode selects how admins authenticate:
+    #   'WindowsAd' (default) - standalone HTTPS. A hosted HTML login form
+    #                collects AD credentials that are validated directly against
+    #                Active Directory over the TLS channel and backed by a
+    #                server-side session cookie. No IIS needed.
+    #   'IIS'      - the service runs behind IIS with Windows Authentication and
+    #                the ASP.NET Core Module forwards the Windows identity. Use
+    #                this for seamless Kerberos single sign-on.
     WebUi         = @{
         Enabled    = $false
+        AuthMode   = 'WindowsAd'
         AdminGroup = 'GG-ODJ-WebAdmins'
         BasePath   = '/ui'
     }

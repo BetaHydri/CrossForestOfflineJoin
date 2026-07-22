@@ -61,7 +61,7 @@ flowchart LR
     end
 
     A -- POST /api/v1/provision (TLS + API key) --> SVC
-    ADM -- GET /ui (HTTPS, IIS Windows Auth, AD group) --> SVC
+    ADM -- GET /ui (HTTPS, AD-group auth) --> SVC
     SVC -- djoin /provision --> DCA
     SVC -- djoin /provision --> DCB
     SVC -- Blob / unattend.xml --> A
@@ -241,11 +241,13 @@ fragment into the VMware template's unattend.xml (pass `offlineServicing`).
 
 For manual, ad-hoc joins the service can also serve a **browser form** at
 `https://<host>/ui`: a drop-down of the allowed domain/OU targets where the admin
-only types the computer name. The form is **disabled by default** and designed to
-run **behind IIS with Windows Authentication** — restricted to an AD group
-(`WebUi.AdminGroup`), with a CSRF token, server-side re-validation against the
-allow-list, and HTTPS. Enable it via the `WebUi` block in `appsettings.psd1` (or
-`install.ps1 -EnableWebUi`). Details:
+only types the computer name. The form is **disabled by default** and restricted
+to an AD group (`WebUi.AdminGroup`), with a CSRF token, server-side re-validation
+against the allow-list, and HTTPS. It authenticates admins via `WebUi.AuthMode`:
+`'WindowsAd'` (**default**) validates browser-supplied AD credentials directly —
+**no IIS required** — or `'IIS'` consumes the Windows identity forwarded by IIS
+for Kerberos single sign-on. Enable it via the `WebUi` block in
+`appsettings.psd1` (or `install.ps1 -EnableWebUi`). Details:
 [quickstart.md#web-ui-for-ad-admins-optional](quickstart.md).
 
 ### VMware Aria Automation (vRA / vRO) integration
@@ -288,8 +290,9 @@ automation* node).
   (including `X-Forwarded-For`) and the authenticated user. Control characters are
   stripped (no log forging). Optionally every event is mirrored to the Windows
   Event Log for central collection (Windows Event Forwarding / SIEM).
-- **Web UI hardening:** HTTPS only, IIS Windows Authentication, restricted to an
-  AD group (`Add-PodeAuthIIS`), anti-CSRF token, server-side re-validation
+- **Web UI hardening:** HTTPS only, AD-group-restricted authentication
+  (`WebUi.AuthMode`: standalone `Add-PodeAuthWindowsAd` by default, or
+  `Add-PodeAuthIIS` behind IIS), anti-CSRF token, server-side re-validation
   against the allow-list (the browser drop-down is never trusted), audit with the
   authenticated Windows user.
 - **CredSSP is not used.**

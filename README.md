@@ -63,7 +63,7 @@ flowchart LR
     end
 
     A -- POST /api/v1/provision (TLS + API-Key) --> SVC
-    ADM -- GET /ui (HTTPS, IIS Windows-Auth, AD-Gruppe) --> SVC
+    ADM -- GET /ui (HTTPS, AD-Gruppen-Auth) --> SVC
     SVC -- djoin /provision --> DCA
     SVC -- djoin /provision --> DCB
     SVC -- Blob / unattend.xml --> A
@@ -242,11 +242,13 @@ die unattend.xml der VMware-Vorlage (Pass `offlineServicing`) einbetten.
 Fuer manuelle Ad-hoc-Joins kann der Dienst zusaetzlich ein **Browser-Formular**
 unter `https://<host>/ui` bereitstellen: ein Aufklappmenue der erlaubten
 Domaenen/OU-Ziele, der Admin gibt nur den Computernamen ein. Die Oberflaeche ist
-**standardmaessig deaktiviert** und fuer den Betrieb **hinter IIS mit
-Windows-Authentifizierung** vorgesehen — beschraenkt auf eine AD-Gruppe
-(`WebUi.AdminGroup`), mit CSRF-Token, serverseitiger Neuvalidierung gegen die
-Positivliste und HTTPS. Aktivierung ueber den `WebUi`-Block in
-`appsettings.psd1` (oder `install.ps1 -EnableWebUi`). Details:
+**standardmaessig deaktiviert** und auf eine AD-Gruppe (`WebUi.AdminGroup`)
+beschraenkt — mit CSRF-Token, serverseitiger Neuvalidierung gegen die
+Positivliste und HTTPS. Die Anmeldung steuert `WebUi.AuthMode`: `'WindowsAd'`
+(**Standard**) prueft die im Browser eingegebenen AD-Anmeldedaten direkt —
+**kein IIS noetig** — oder `'IIS'` uebernimmt die von IIS durchgereichte
+Windows-Identitaet fuer Kerberos-Single-Sign-on. Aktivierung ueber den
+`WebUi`-Block in `appsettings.psd1` (oder `install.ps1 -EnableWebUi`). Details:
 [docs/schnellstart.md#weboberflaeche-fuer-ad-admins-optional](docs/schnellstart.md).
 
 ### VMware Aria Automation (vRA / vRO) Anbindung
@@ -291,10 +293,12 @@ Das Architekturdiagramm oben bildet genau diesen Ablauf ab (Knoten
   Steuerzeichen werden entfernt (kein Log-Forging). Optional wird jedes Ereignis
   zusaetzlich ins Windows-Ereignisprotokoll gespiegelt (zentrale Sammlung per
   Windows Event Forwarding / SIEM).
-- **Web-UI-Absicherung:** nur HTTPS, IIS-Windows-Authentifizierung, Beschraenkung
-  auf eine AD-Gruppe (`Add-PodeAuthIIS`), Anti-CSRF-Token, serverseitige
-  Neuvalidierung gegen die Positivliste (dem Browser-Aufklappmenue wird nicht
-  vertraut), Audit mit angemeldetem Windows-Benutzer.
+- **Web-UI-Absicherung:** nur HTTPS, auf eine AD-Gruppe beschraenkte
+  Authentifizierung (`WebUi.AuthMode`: standardmaessig eigenstaendig ueber
+  `Add-PodeAuthWindowsAd` oder `Add-PodeAuthIIS` hinter IIS), Anti-CSRF-Token,
+  serverseitige Neuvalidierung gegen die Positivliste (dem
+  Browser-Aufklappmenue wird nicht vertraut), Audit mit angemeldetem
+  Windows-Benutzer.
 - **CredSSP wird nicht verwendet.**
 
 ## BSI IT-Grundschutz (Deutschland / Public Sector)

@@ -47,7 +47,7 @@ function Get-OdjHtmlPage
     .card { max-width:640px; margin:0 auto; background:#fff; border:1px solid #ddd; border-radius:8px; padding:1.5rem 2rem; box-shadow:0 1px 3px rgba(0,0,0,.08); }
     h1 { font-size:1.3rem; margin-top:0; }
     label { display:block; margin:1rem 0 .3rem; font-weight:600; }
-    input[type=text], select { width:100%; padding:.5rem; border:1px solid #bbb; border-radius:4px; box-sizing:border-box; font-size:1rem; }
+    input[type=text], input[type=password], select { width:100%; padding:.5rem; border:1px solid #bbb; border-radius:4px; box-sizing:border-box; font-size:1rem; }
     button { margin-top:1.5rem; padding:.6rem 1.2rem; background:#0067b8; color:#fff; border:0; border-radius:4px; font-size:1rem; cursor:pointer; }
     button:hover { background:#005a9e; }
     .meta { color:#666; font-size:.85rem; }
@@ -62,6 +62,48 @@ $Body
   </div>
 </body>
 </html>
+"@
+}
+
+function Get-OdjLoginBody
+{
+    <#
+    .SYNOPSIS
+        Builds the Active Directory credential login form used when the service
+        is hosted standalone (WebUi.AuthMode = 'WindowsAd').
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param
+    (
+        [Parameter(Mandatory)]
+        [string]
+        $BasePath,
+
+        [Parameter()]
+        [string]
+        $ErrorMessage
+    )
+
+    $errHtml = ''
+    if (-not [string]::IsNullOrEmpty($ErrorMessage))
+    {
+        $errHtml = '<div class="err">' + [System.Net.WebUtility]::HtmlEncode($ErrorMessage) + '</div>'
+    }
+
+    $action = [System.Net.WebUtility]::HtmlEncode($BasePath.TrimEnd('/') + '/login')
+
+    return @"
+<h1>Sign in</h1>
+$errHtml
+<p class="meta">Use your Active Directory credentials. Access is restricted to authorized administrators.</p>
+<form method="post" action="$action" autocomplete="off">
+  <label for="username">User name</label>
+  <input type="text" id="username" name="username" autocomplete="username" required />
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" autocomplete="current-password" required />
+  <button type="submit">Sign in</button>
+</form>
 "@
 }
 

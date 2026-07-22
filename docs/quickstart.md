@@ -247,7 +247,9 @@ certificate and creates the web UI admin group.
 Lab assumptions:
 
 - The service runs in the root domain `forest1.net` (that is where the gMSA
-  lives and where IIS/Windows resolves the caller identity).
+  lives). The Web UI uses the default `WebUi.AuthMode = 'WindowsAd'`, so it runs
+  standalone on HTTPS and prompts for AD credentials — **no IIS is required** for
+  this lab.
 - Target domains, each with an `OU=Server` in its root:
   - `child.forest1.net` (child domain in the same forest, **no** trust needed)
   - `forest2.net` (foreign forest, via the transitive forest trust)
@@ -460,10 +462,20 @@ interactively — no API key or scripting required. It is **disabled by default*
 
 ### Security model
 
-- **Windows Authentication via IIS.** The form is only usable when the service
-  is hosted behind IIS with Windows Authentication enabled (see *Hosting
-  alternative: Windows Server with IIS*, Option A). IIS forwards the caller's
-  Windows identity; the Pode route trusts nothing else.
+- **Two authentication modes (`WebUi.AuthMode`).** The form authenticates the
+  browser against Active Directory in one of two ways:
+  - `'WindowsAd'` (**default**) — the service runs standalone on HTTPS. The
+    browser prompts for AD credentials (HTTP Basic over the existing TLS
+    channel) that Pode validates directly against Active Directory
+    (`Add-PodeAuthWindowsAd`). **No IIS is required**, so `/ui` works out of the
+    box on a self-hosted Pode service.
+  - `'IIS'` — the service runs behind IIS with Windows Authentication enabled
+    (see *Hosting alternative: Windows Server with IIS*, Option A). IIS's
+    ASP.NET Core Module forwards the caller's Windows identity
+    (`Add-PodeAuthIIS`) for seamless Kerberos single sign-on; the Pode route
+    trusts nothing else.
+
+  Both modes restrict access to `WebUi.AdminGroup` and reject everyone else.
 - **Group-restricted.** Only members of the configured admin group
   (`WebUi.AdminGroup`, default `GG-ODJ-WebAdmins`) may open the form. The group
   must already exist; the installer can create it on request with
@@ -495,6 +507,7 @@ administrators with `Add-ADGroupMember`).
 ```powershell
 WebUi = @{
     Enabled    = $true
+    AuthMode   = 'WindowsAd'   # 'WindowsAd' (default, standalone) or 'IIS'
     AdminGroup = 'GG-ODJ-WebAdmins'
     BasePath   = '/ui'
 }
@@ -502,8 +515,10 @@ WebUi = @{
 
 ### Use it
 
-1. Browse to `https://<service-host>/ui` (or your custom `BasePath`). IIS
-   prompts for Windows credentials; non-members of the admin group are rejected.
+1. Browse to `https://<service-host>/ui` (or your custom `BasePath`). In the
+   default `WindowsAd` mode the browser prompts for AD credentials (HTTP Basic
+   over TLS); in `IIS` mode IIS prompts for Windows credentials. Either way,
+   non-members of the admin group are rejected.
 2. Enter the computer name, pick a target from the drop-down (populated from
    `AllowedTargets`) and choose the output format — **blob** (Base64) or
    **unattend** (XML fragment).

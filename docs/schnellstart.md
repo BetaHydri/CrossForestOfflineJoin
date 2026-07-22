@@ -257,8 +257,10 @@ Web-UI-Admin-Gruppe an.
 
 Annahme fuer das Lab:
 
-- Der Dienst laeuft in der Root-Domaene `forest1.net` (dort liegt die gMSA und
-  loest IIS/Windows die Aufruferidentitaet auf).
+- Der Dienst laeuft in der Root-Domaene `forest1.net` (dort liegt die gMSA). Die
+  Web-UI nutzt den Standard `WebUi.AuthMode = 'WindowsAd'`, laeuft also
+  eigenstaendig ueber HTTPS und fragt nach AD-Anmeldedaten — **kein IIS** ist
+  fuer dieses Lab erforderlich.
 - Ziel-Domaenen mit je einer `OU=Server` in der Root:
   - `child.forest1.net` (Kind-Domaene im selben Forest, **kein** Trust noetig)
   - `forest2.net` (fremder Forest, ueber den transitiven Forest-Trust)
@@ -479,11 +481,21 @@ Skripting. Standardmaessig ist es **deaktiviert**.
 
 ### Sicherheitsmodell
 
-- **Windows-Authentifizierung ueber IIS.** Das Formular ist nur nutzbar, wenn
-  der Dienst hinter IIS mit aktivierter Windows-Authentifizierung gehostet wird
-  (siehe *Hosting-Alternative: Windows Server mit IIS*, Variante A). IIS reicht
-  die Windows-Identitaet des Aufrufers durch; die Pode-Route vertraut nichts
-  anderem.
+- **Zwei Authentifizierungsmodi (`WebUi.AuthMode`).** Das Formular
+  authentifiziert den Browser auf eine von zwei Arten gegen Active Directory:
+  - `'WindowsAd'` (**Standard**) — der Dienst laeuft eigenstaendig ueber HTTPS.
+    Der Browser fragt nach AD-Anmeldedaten (HTTP Basic ueber den bestehenden
+    TLS-Kanal), die Pode direkt gegen Active Directory prueft
+    (`Add-PodeAuthWindowsAd`). **Kein IIS erforderlich** — `/ui` funktioniert
+    sofort auf einem selbst gehosteten Pode-Dienst.
+  - `'IIS'` — der Dienst laeuft hinter IIS mit aktivierter
+    Windows-Authentifizierung (siehe *Hosting-Alternative: Windows Server mit
+    IIS*, Variante A). Das ASP.NET-Core-Modul von IIS reicht die
+    Windows-Identitaet des Aufrufers durch (`Add-PodeAuthIIS`) fuer nahtloses
+    Kerberos-Single-Sign-on; die Pode-Route vertraut nichts anderem.
+
+  Beide Modi beschraenken den Zugriff auf `WebUi.AdminGroup` und weisen alle
+  anderen ab.
 - **Gruppenbeschraenkt.** Nur Mitglieder der konfigurierten Admin-Gruppe
   (`WebUi.AdminGroup`, Standard `GG-ODJ-WebAdmins`) duerfen das Formular
   oeffnen. Die Gruppe muss bereits existieren; der Installer legt sie auf
@@ -516,6 +528,7 @@ berechtigten Administratoren per `Add-ADGroupMember` hinzufuegen).
 ```powershell
 WebUi = @{
     Enabled    = $true
+    AuthMode   = 'WindowsAd'   # 'WindowsAd' (Standard, eigenstaendig) oder 'IIS'
     AdminGroup = 'GG-ODJ-WebAdmins'
     BasePath   = '/ui'
 }
@@ -523,9 +536,10 @@ WebUi = @{
 
 ### Verwenden
 
-1. `https://<Dienst-Host>/ui` (oder eigener `BasePath`) im Browser oeffnen. IIS
-   fragt nach Windows-Anmeldedaten; Nicht-Mitglieder der Admin-Gruppe werden
-   abgewiesen.
+1. `https://<Dienst-Host>/ui` (oder eigener `BasePath`) im Browser oeffnen. Im
+   Standardmodus `WindowsAd` fragt der Browser nach AD-Anmeldedaten (HTTP Basic
+   ueber TLS); im Modus `IIS` fragt IIS nach Windows-Anmeldedaten. In beiden
+   Faellen werden Nicht-Mitglieder der Admin-Gruppe abgewiesen.
 2. Computernamen eingeben, ein Ziel aus dem Dropdown (aus `AllowedTargets`
    befuellt) waehlen und das Ausgabeformat waehlen — **blob** (Base64) oder
    **unattend** (XML-Fragment).

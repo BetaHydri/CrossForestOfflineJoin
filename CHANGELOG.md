@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-07-22
+
+### Added
+
+- `src/WebService/Start-OfflineJoinService.ps1`: the Web UI can now run without
+  IIS. A new `WebUi.AuthMode` setting selects the authentication scheme:
+  - `'WindowsAd'` (new default) serves a hosted HTML login form and validates
+    the submitted AD credentials directly against Active Directory over the
+    existing TLS channel, restricted to `AdminGroup` and backed by a server-side
+    session cookie (with login/logout routes). This makes `/ui` usable when Pode
+    is self-hosted standalone.
+  - `'IIS'` keeps the previous behaviour, consuming the Windows identity
+    forwarded by IIS's ASP.NET Core Module for seamless Kerberos single sign-on.
+- `src/WebService/OfflineJoinWebUi.ps1`: new `Get-OdjLoginBody` helper renders
+  the standalone login form.
+- `src/WebService/appsettings.psd1`: documents the new optional `WebUi.AuthMode`
+  key (defaults to `'WindowsAd'`).
+
+### Fixed
+
+- Standalone Web UI requests previously failed with HTTP 401 "No
+  MS-ASPNETCORE-WINAUTHTOKEN header found" because `Add-PodeAuthIIS` only works
+  behind IIS. The default `WindowsAd` mode resolves this without requiring IIS.
+
+### Documentation
+
+- `docs/quickstart.md` and `docs/schnellstart.md`: the *Web UI for AD admins*
+  section now documents both `WebUi.AuthMode` values (standalone `WindowsAd`
+  default vs. `IIS`), including the config snippet (`AuthMode` key) and the
+  updated sign-in step. The **dry-run** walkthrough no longer assumes IIS \u2014 it
+  states the default `WindowsAd` mode runs `/ui` standalone over HTTPS with no
+  IIS required.
+- `README.md` and `docs/README.en.md`: the Web UI description, the "Web UI
+  hardening" security bullet, and the architecture-diagram `/ui` label reflect
+  the new AD-group authentication with the `WindowsAd`/`IIS` modes instead of
+  IIS-only Windows Authentication.
+
 ## [1.6.4] - 2026-07-22
 
 ### Fixed
@@ -246,7 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.4...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.5...HEAD
+[1.6.5]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.4...v1.6.5
 [1.6.4]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...v1.6.2

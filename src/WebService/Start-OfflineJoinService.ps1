@@ -157,10 +157,29 @@ function Write-OdjAudit
 
 Start-PodeServer {
 
+    # The certificate is looked up by thumbprint in a certificate store. The
+    # store location defaults to LocalMachine (where the setup/install steps
+    # place the server certificate); Pode itself would otherwise default to
+    # CurrentUser\My and fail to find a LocalMachine certificate. Both the
+    # store name and location can be overridden in appsettings if needed.
+    $certStoreName = 'My'
+    if ($config.Endpoint.Contains('CertificateStoreName') -and $config.Endpoint.CertificateStoreName)
+    {
+        $certStoreName = $config.Endpoint.CertificateStoreName
+    }
+
+    $certStoreLocation = 'LocalMachine'
+    if ($config.Endpoint.Contains('CertificateStoreLocation') -and $config.Endpoint.CertificateStoreLocation)
+    {
+        $certStoreLocation = $config.Endpoint.CertificateStoreLocation
+    }
+
     Add-PodeEndpoint -Address $config.Endpoint.Address `
         -Port $config.Endpoint.Port `
         -Protocol Https `
-        -CertificateThumbprint $config.Endpoint.CertificateThumbprint
+        -CertificateThumbprint $config.Endpoint.CertificateThumbprint `
+        -CertificateStoreName $certStoreName `
+        -CertificateStoreLocation $certStoreLocation
 
     # Service lifecycle: record start (BSI OPS.1.1.5) and, best-effort, stop.
     Write-OdjAudit -Config $config -EventName 'service' -Outcome 'start' `
@@ -168,7 +187,7 @@ Start-PodeServer {
 
     try
     {
-        Register-PodeEvent -Type Stop -ScriptBlock {
+        Register-PodeEvent -Type Stop -Name 'OfflineJoinServiceStop' -ScriptBlock {
             $cfg = $using:config
             try
             {
@@ -185,9 +204,11 @@ Start-PodeServer {
         # Register-PodeEvent may be unavailable in some Pode versions; ignore.
     }
 
-    # API-key authentication via the 'X-Api-Key' header.
+    # API-key authentication via the 'X-Api-Key' header. Sessionless because
+    # this is a stateless REST API: every request carries its own key and no
+    # session cookie is issued (avoids requiring Enable-PodeSessionMiddleware).
     New-PodeAuthScheme -ApiKey -Location Header -LocationName 'X-Api-Key' |
-        Add-PodeAuth -Name 'ApiKeyAuth' -ScriptBlock {
+        Add-PodeAuth -Name 'ApiKeyAuth' -Sessionless -ScriptBlock {
             param($key)
 
             $cfg = $using:config
@@ -283,18 +304,64 @@ Start-PodeServer {
         }
     }
 
-    # Optional secured browser form for AD admins (IIS Windows Authentication).
+    # Optional secured browser form for AD admins. Two authentication modes are
+    # supported through WebUi.AuthMode:
+    #   'WindowsAd' (default) - standalone HTTPS: a hosted HTML login form
+    #                collects AD credentials that are validated directly against
+    #                Active Directory over the TLS channel and backed by a
+    #                server-side session cookie. No IIS needed.
+    #   'IIS'      - the Windows identity is forwarded by IIS's ASP.NET Core
+    #                Module (MS-ASPNETCORE-WINAUTHTOKEN) when the service is
+    #                hosted behind IIS with Windows Authentication.
+    # Both modes restrict access to members of AdminGroup.
     if ($config.ContainsKey('WebUi') -and $config.WebUi -and $config.WebUi.Enabled)
     {
-        # Session middleware backs the anti-CSRF token.
+        # Session middleware backs the anti-CSRF token and the login cookie.
         Enable-PodeSessionMiddleware -Duration 1800 -Extend
-
-        # Windows identity is forwarded by IIS; only members of AdminGroup pass.
-        Add-PodeAuthIIS -Name 'WebUiAuth' -Groups @($config.WebUi.AdminGroup)
 
         $uiBasePath = if ($config.WebUi.BasePath) { $config.WebUi.BasePath } else { '/ui' }
 
-        Add-PodeRoute -Method Get -Path $uiBasePath -Authentication 'WebUiAuth' -ScriptBlock {
+        $uiAuthMode = 'WindowsAd'
+        if ($config.WebUi.Contains('AuthMode') -and $config.WebUi.AuthMode)
+        {
+            $uiAuthMode = [string]$config.WebUi.AuthMode
+        }
+
+        # Protected UI routes redirect to the login form only in standalone mode;
+        # under IIS the identity is always present, so no login page is used.
+        $uiRouteAuth = @{ Authentication = 'WebUiAuth' }
+
+        if ($uiAuthMode -eq 'IIS')
+        {
+            # Windows identity is forwarded by IIS; only members of AdminGroup pass.
+            Add-PodeAuthIIS -Name 'WebUiAuth' -Groups @($config.WebUi.AdminGroup)
+        }
+        else
+        {
+            # Standalone: hosted HTML login form. Credentials are validated
+            # against Active Directory over the TLS channel, restricted to
+            # AdminGroup, and backed by a server-side session cookie.
+            New-PodeAuthScheme -Form |
+                Add-PodeAuthWindowsAd -Name 'WebUiAuth' -Groups @($config.WebUi.AdminGroup) `
+                    -FailureUrl "$uiBasePath/login?failed=1" -SuccessUrl $uiBasePath
+
+            $uiRouteAuth.Login = $true
+
+            # Login page (GET renders the form; POST validates the credentials).
+            Add-PodeRoute -Method Get -Path "$uiBasePath/login" -Authentication 'WebUiAuth' -Login -ScriptBlock {
+                $cfg = $using:config
+                $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
+                $err = if ($WebEvent.Query.failed) { 'Sign-in failed. Check your credentials or contact an administrator.' } else { $null }
+                $body = Get-OdjLoginBody -BasePath $basePath -ErrorMessage $err
+                Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Sign in' -Body $body)
+            }
+
+            Add-PodeRoute -Method Post -Path "$uiBasePath/login" -Authentication 'WebUiAuth' -Login
+
+            Add-PodeRoute -Method Post -Path "$uiBasePath/logout" -Authentication 'WebUiAuth' -Logout
+        }
+
+        Add-PodeRoute -Method Get -Path $uiBasePath @uiRouteAuth -ScriptBlock {
             $cfg = $using:config
             $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
             $token = [guid]::NewGuid().ToString('N')
@@ -304,7 +371,7 @@ Start-PodeServer {
             Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Offline Domain Join' -Body $body)
         }
 
-        Add-PodeRoute -Method Post -Path "$uiBasePath/provision" -Authentication 'WebUiAuth' -ScriptBlock {
+        Add-PodeRoute -Method Post -Path "$uiBasePath/provision" @uiRouteAuth -ScriptBlock {
             $cfg = $using:config
             $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
             $user = [string]$WebEvent.Auth.User.Username
