@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.8] - 2026-07-22
+
+### Fixed
+
+- `src/WebService/Start-OfflineJoinService.ps1`: the Web UI provisioning form
+  returned HTTP 403 (audit `reason=csrf`) on every resubmission after any form
+  error (invalid name, wrong target prefix, provisioning failure). Two causes:
+  the error re-render rotated the anti-CSRF session token to a new value, and
+  `Set-PodeResponseStatus -Code <4xx>` rendered Pode's built-in error page -
+  marking the response as sent - so the re-rendered form (carrying the rotated
+  token) was discarded and never reached the browser. The next submit therefore
+  posted the stale token while the session held the rotated one, so it failed
+  the CSRF check indefinitely. The token is now stable per session (no rotation
+  on re-render) and every `Set-PodeResponseStatus` that precedes our own HTML
+  now uses `-NoErrorPage`, so the form with its inline error message is what the
+  browser receives and corrected resubmissions succeed.
+
 ## [1.6.7] - 2026-07-22
 
 ### Fixed

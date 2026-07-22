@@ -405,7 +405,7 @@ Start-PodeServer {
             {
                 Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'csrf' `
                     -Field ([ordered]@{ ip = $ip; user = $user }) -EntryType 'Warning' -EventId 4021
-                Set-PodeResponseStatus -Code 403
+                Set-PodeResponseStatus -Code 403 -NoErrorPage
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Denied' -Body '<h1>Request rejected</h1><p>Invalid or expired form token. Please reload the form.</p>')
                 return
             }
@@ -422,12 +422,12 @@ Start-PodeServer {
                 $target = $allowed[$idx]
             }
 
-            # Re-render the form with a fresh token and an error message.
+            # Re-render the form after a validation error. Reuse the token already
+            # bound to the session (do NOT rotate it) so the resubmission matches.
+            $formToken = $expected
             $renderError = {
                 param($msg)
-                $newToken = [guid]::NewGuid().ToString('N')
-                $WebEvent.Session.Data.csrf = $newToken
-                $b = Get-OdjFormBody -Targets $allowed -CsrfToken $newToken -User $user -BasePath $basePath -ErrorMessage $msg
+                $b = Get-OdjFormBody -Targets $allowed -CsrfToken $formToken -User $user -BasePath $basePath -ErrorMessage $msg
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Offline Domain Join' -Body $b)
             }
 
@@ -435,14 +435,14 @@ Start-PodeServer {
             {
                 Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'invalid-name' `
                     -Field ([ordered]@{ ip = $ip; user = $user; name = $machineName }) -EntryType 'Warning' -EventId 4022
-                Set-PodeResponseStatus -Code 400
+                Set-PodeResponseStatus -Code 400 -NoErrorPage
                 & $renderError 'Invalid computer name.'
                 return
             }
 
             if ($null -eq $target)
             {
-                Set-PodeResponseStatus -Code 400
+                Set-PodeResponseStatus -Code 400 -NoErrorPage
                 & $renderError 'Please select a valid target.'
                 return
             }
@@ -451,7 +451,7 @@ Start-PodeServer {
             {
                 Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'prefix' `
                     -Field ([ordered]@{ ip = $ip; user = $user; domain = [string]$target.Domain; name = $machineName }) -EntryType 'Warning' -EventId 4023
-                Set-PodeResponseStatus -Code 403
+                Set-PodeResponseStatus -Code 403 -NoErrorPage
                 & $renderError ("Computer name must start with '{0}' for this target." -f $target.NamePrefix)
                 return
             }
@@ -478,7 +478,7 @@ Start-PodeServer {
             {
                 Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'error' -Reason 'provision-failed' `
                     -Field ([ordered]@{ ip = $ip; user = $user; name = $machineName; msg = [string]$_.Exception.Message }) -EntryType 'Error' -EventId 4024
-                Set-PodeResponseStatus -Code 500
+                Set-PodeResponseStatus -Code 500 -NoErrorPage
                 & $renderError 'Provisioning failed.'
             }
         }
