@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Folder index READMEs: `docs/README.md` (table of the documentation files) and
+  `src/README.md` (table of the source module and web service), rendered by
+  GitHub as the folder landing pages.
 - Dynamic **latest-release badge** (shields.io) plus license and PowerShell
   version badges at the top of both READMEs; the release badge auto-updates and
   links to the releases page.

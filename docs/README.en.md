@@ -75,12 +75,14 @@ OfflineJoinService/
 |-- README.md                          # German overview
 |-- install.ps1                        # Automated installer (optional)
 |-- docs/
+|   |-- README.md                      # Docs index (table of contents)
 |   |-- README.en.md                   # English overview (this file)
 |   |-- loesungsvarianten.md           # Variant comparison + double-hop analysis (DE)
 |   |-- solution-variants.md           # Variant comparison + double-hop analysis (EN)
 |   |-- schnellstart.md                # Installation quick-start (DE)
 |   `-- quickstart.md                  # Installation quick-start (EN)
 |-- src/
+|   |-- README.md                      # Source index
 |   |-- OfflineJoin/                   # Core module (djoin wrapper)
 |   |   |-- OfflineJoin.psd1
 |   |   `-- OfflineJoin.psm1
@@ -101,6 +103,8 @@ OfflineJoinService/
 | File | Type | Purpose |
 |------|------|---------|
 | [README.md](../README.md) | Docs | German overview: problem, solution, architecture, setup. |
+| [docs/README.md](README.md) | Docs index | Table of contents for the `docs/` documents (language + content). |
+| [src/README.md](../src/README.md) | Source index | Table of contents for the `src/` source (module + web service). |
 | [install.ps1](../install.ps1) | Installer | Automated, re-runnable 9-stage installer (prerequisites, Pode, KDS key, hosts group, gMSA, OU delegation, config, service registration). Options `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`. |
 | [docs/README.en.md](README.en.md) | Docs | This English overview. |
 | [docs/loesungsvarianten.md](loesungsvarianten.md) | Docs | Variant comparison (CredSSP/KCD/RBCD/ODJ/web service) + double-hop analysis (German). |

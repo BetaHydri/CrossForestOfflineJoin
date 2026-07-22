@@ -77,8 +77,10 @@ OfflineJoinService/
 |-- README.md
 |-- install.ps1                        # Automatisierter Installer (optional)
 |-- docs/
+|   |-- README.md                      # Doku-Index (Inhaltsverzeichnis)
 |   `-- loesungsvarianten.md          # Variantenvergleich + Double-Hop-Analyse
 |-- src/
+|   |-- README.md                      # Quellcode-Index
 |   |-- OfflineJoin/                   # Kernmodul (djoin-Kapselung)
 |   |   |-- OfflineJoin.psd1
 |   |   `-- OfflineJoin.psm1
@@ -99,6 +101,8 @@ OfflineJoinService/
 | Datei | Typ | Zweck |
 |-------|-----|-------|
 | [README.md](README.md) | Doku | Diese Uebersicht (Deutsch): Problem, Loesung, Architektur, Einrichtung. |
+| [docs/README.md](docs/README.md) | Doku-Index | Inhaltsverzeichnis der `docs/`-Dokumente (Sprache + Inhalt). |
+| [src/README.md](src/README.md) | Quellcode-Index | Inhaltsverzeichnis des `src/`-Quellcodes (Modul + Webdienst). |
 | [install.ps1](install.ps1) | Installer | Automatisierter, wiederholbarer 9-Stufen-Installer (Voraussetzungen, Pode, KDS-Key, Hosts-Gruppe, gMSA, OU-Delegierung, Konfiguration, Dienstregistrierung). Optionen `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`. |
 | [docs/README.en.md](docs/README.en.md) | Doku | Englische Fassung dieser Uebersicht. |
 | [docs/loesungsvarianten.md](docs/loesungsvarianten.md) | Doku | Variantenvergleich (CredSSP/KCD/RBCD/ODJ/Webdienst) + Double-Hop-Analyse (Deutsch). |
