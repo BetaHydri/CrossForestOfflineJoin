@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-22
+
+### Added
+
+- `install.ps1`: a re-runnable, parameter-driven installer that automates the
+  end-to-end setup in up to nine idempotent stages (prerequisite checks, Pode
+  install, KDS root key, hosts group, gMSA creation and installation, OU
+  delegation, generation of `appsettings.local.psd1`, and registration of the
+  Pode web service as a Windows service under the gMSA via `nssm`). Supports
+  `-WhatIf`; the API key is supplied as a `SecureString` and only its SHA-256
+  hash is written to the configuration. Documented in both quick-start guides.
+
 ## [1.1.1] - 2026-07-22
 
 ### Changed
@@ -56,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/releases/tag/v1.0.0

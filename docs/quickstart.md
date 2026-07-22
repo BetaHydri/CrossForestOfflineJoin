@@ -9,6 +9,13 @@ Offline Domain Join (djoin) wrapped in a **gMSA web service**. It joins new
 VMware VMs into multiple resource forests without the double-hop problem and
 without credentials on the target VM.
 
+> **Automated install:** the repository ships `install.ps1`, a re-runnable
+> installer that automates the steps below (prerequisite checks, Pode install,
+> KDS root key, hosts group, gMSA creation/installation, OU delegation,
+> `appsettings.local.psd1` generation and service registration via `nssm`). Run
+> `Get-Help .\install.ps1 -Full` for parameters, or read the manual steps below
+> to understand what it does. It supports `-WhatIf` for a dry run.
+
 ## 1. Prerequisites
 
 ### Infrastructure / Active Directory
