@@ -230,6 +230,33 @@ Windows-Authentifizierung** vorgesehen — beschraenkt auf eine AD-Gruppe
 Positivliste und HTTPS. Aktivierung ueber den `WebUi`-Block in
 `appsettings.psd1` (oder `install.ps1 -EnableWebUi`). Details:
 [docs/schnellstart.md#weboberflaeche-fuer-ad-admins-optional](docs/schnellstart.md).
+
+### VMware Aria Automation (vRA / vRO) Anbindung
+
+In einer VMware-Aria-Automatisierung ruft typischerweise **Aria Automation
+Orchestrator (vRO, ehemals vRealize Orchestrator)** den Dienst auf, waehrend
+**Aria Automation (vRA / VCF Automation, ehemals vRealize Automation)** den
+Self-Service-Katalog bereitstellt:
+
+1. vRA startet fuer die neue VM einen Katalog-/Blueprint-Workflow und ruft vRO.
+2. vRO ruft per **HTTP-REST-Plug-in** `POST /api/v1/provision`
+   (TLS + `X-Api-Key`) auf und erhaelt den Base64-Blob (oder das
+   unattend-Fragment) zurueck.
+3. vRO schreibt den Blob als `guestinfo`-Variable in die VM (vCenter Advanced
+   Setting, z. B. per PowerCLI `New-AdvancedSetting -Name 'guestinfo.odjblob'`
+   oder `govc vm.change -e guestinfo.odjblob=...`).
+4. Beim First-Boot wendet die VM den Blob offline an
+   (`Invoke-OfflineDomainJoinRequest.ps1 -GuestInfoKey 'guestinfo.odjblob'`).
+
+Das Architekturdiagramm oben bildet genau diesen Ablauf ab (Knoten
+*Aria / vRO Automatisierung*).
+
+**Referenzen:**
+
+- [VMware Aria Automation (vRA / VCF Automation) – Dokumentation](https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation.html)
+- [VMware Aria Automation Orchestrator (vRO) – Dokumentation](https://techdocs.broadcom.com/us/en/vmware-cis/aria/aria-automation-orchestrator.html)
+- [VMware vSphere – Dokumentation (guestinfo / VM-Advanced-Settings, VMware Tools)](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-1.html)
+
 ## Sicherheit
 
 - **Least Privilege:** gMSA erhaelt nur je Ziel-OU das Recht, Computerkonten

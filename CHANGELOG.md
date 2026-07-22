@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Dynamic **latest-release badge** (shields.io) plus license and PowerShell
+  version badges at the top of both READMEs; the release badge auto-updates and
+  links to the releases page.
+- **VMware Aria Automation (vRA) / Aria Automation Orchestrator (vRO)**
+  integration section and reference links (Broadcom TechDocs) in both READMEs,
+  describing the `POST /api/v1/provision` -> `guestinfo` -> first-boot flow.
+
+### Changed
+
+- READMEs (DE + EN) now reflect the installer and the optional web UI: the
+  architecture mermaid includes the admin web-UI path; the project structure and
+  resource tables list `install.ps1`, `OfflineJoinWebUi.ps1` and `tests/`; and
+  the setup/usage/security sections were updated accordingly.
+
 ## [1.3.0] - 2026-07-22
 
 ### Added
