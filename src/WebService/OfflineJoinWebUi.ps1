@@ -202,18 +202,56 @@ function Get-OdjResultBody
 
         [Parameter(Mandatory)]
         [string]
-        $BasePath
+        $BasePath,
+
+        [Parameter()]
+        [string]
+        $Format = 'blob'
     )
 
     $nameEnc = [System.Net.WebUtility]::HtmlEncode($MachineName)
     $domainEnc = [System.Net.WebUtility]::HtmlEncode($Domain)
     $payloadEnc = [System.Net.WebUtility]::HtmlEncode($Payload)
 
+    $isUnattend = $Format.ToLowerInvariant() -eq 'unattend'
+    if ($isUnattend)
+    {
+        $fileName = $MachineName + '-unattend.xml'
+        $mimeType = 'application/xml'
+    }
+    else
+    {
+        $fileName = $MachineName + '.txt'
+        $mimeType = 'text/plain'
+    }
+
+    $fileNameJs = $fileName -replace '\\', '\\' -replace "'", "\'"
+    $mimeJs = $mimeType -replace "'", "\'"
+
     return @"
 <h1>Result</h1>
 <p class="meta">Computer <strong>$nameEnc</strong> in <strong>$domainEnc</strong></p>
 <label>Provisioning data</label>
-<textarea readonly onclick="this.select()">$payloadEnc</textarea>
+<textarea id="odjPayload" readonly onclick="this.select()">$payloadEnc</textarea>
+<button type="button" id="odjDownload">Download</button>
 <p><a href="$BasePath">&larr; Create another</a></p>
+<script>
+(function () {
+  var btn = document.getElementById('odjDownload');
+  var area = document.getElementById('odjPayload');
+  if (!btn || !area) { return; }
+  btn.addEventListener('click', function () {
+    var blob = new Blob([area.value], { type: '$mimeJs' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '$fileNameJs';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
 "@
 }

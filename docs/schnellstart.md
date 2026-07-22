@@ -547,6 +547,9 @@ WebUi = @{
    **unattend** (XML-Fragment).
 3. Absenden. Die Ergebnisseite zeigt den erzeugten Blob bzw. das Unattend-XML,
    erzeugt ueber denselben `New-OfflineDomainJoinBlob`- /
-   `ConvertTo-OdjUnattendXml`-Codepfad wie die API.
+   `ConvertTo-OdjUnattendXml`-Codepfad wie die API. In das Textfeld klicken, um
+   den Payload zu kopieren, oder ueber die Schaltflaeche **Download** als Datei
+   speichern (`<Computername>.txt` fuer einen Blob, `<Computername>-unattend.xml`
+   fuer Unattend-XML).
 
 ## See Also

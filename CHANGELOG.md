@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.9] - 2026-07-22
+
+### Added
+
+- `src/WebService/OfflineJoinWebUi.ps1`: the Web UI result page now has a
+  **Download** button next to the provisioning data. It saves the generated
+  payload as a file entirely client-side (no extra server round-trip): a Base64
+  blob downloads as `<computername>.txt` and an unattend XML fragment downloads
+  as `<computername>-unattend.xml`. The existing copy-on-click textarea is
+  unchanged.
+
 ## [1.6.8] - 2026-07-22
 
 ### Fixed

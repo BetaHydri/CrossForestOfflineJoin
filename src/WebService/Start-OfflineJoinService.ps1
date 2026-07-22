@@ -471,7 +471,7 @@ Start-PodeServer {
                     $result.BlobBase64
                 }
 
-                $body = Get-OdjResultBody -MachineName $result.MachineName -Domain $result.Domain -Payload $payload -BasePath $basePath
+                $body = Get-OdjResultBody -MachineName $result.MachineName -Domain $result.Domain -Payload $payload -BasePath $basePath -Format $outputFormat
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Result' -Body $body)
             }
             catch
