@@ -180,9 +180,41 @@ Zum Testen interaktiv:
 .\src\WebService\Start-OfflineJoinService.ps1
 ```
 
-Fuer den Produktivbetrieb als **Windows-Dienst unter der gMSA** registrieren
-(z. B. mit `nssm`), damit der Dienst dauerhaft unter der delegierten Identitaet
-laeuft.
+Fuer den Produktivbetrieb als **Windows-Dienst unter der gMSA** registrieren,
+damit der Dienst dauerhaft unter der delegierten Identitaet laeuft.
+
+`nssm` — der [Non-Sucking Service Manager](https://nssm.cc/) — ist ein kleines,
+kostenloses Open-Source-Hilfsprogramm, das eine beliebige ausfuehrbare Datei
+(hier: `pwsh.exe`/`powershell.exe` mit dem Startskript) in einen echten
+Windows-Dienst verwandelt — inklusive konfigurierbarem Anmeldekonto. Windows
+kann ein beliebiges Skript nicht von Haus aus als Dienst betreiben, und `nssm`
+erlaubt zudem, das Dienstkonto auf eine **gMSA** zu setzen (was das klassische
+`sc.exe`/`New-Service` nicht direkt kann). Es ist nicht zwingend — jeder
+gleichwertige Wrapper (z. B. eine geplante Aufgabe beim Start oder WinSW)
+funktioniert ebenso.
+
+Beispiel (in einer Sitzung mit erhoehten Rechten ausfuehren; `nssm.exe` von
+<https://nssm.cc/> herunterladen):
+
+```powershell
+$svc  = 'OfflineJoinService'
+$repo = 'C:\Apps\CrossForestOfflineJoin'   # Pfad zu diesem Repo auf dem Host
+
+# 1) Dienst anlegen, der das Pode-Startskript ausfuehrt.
+nssm install $svc 'pwsh.exe' `
+    "-NoProfile -File `"$repo\src\WebService\Start-OfflineJoinService.ps1`""
+nssm set $svc AppDirectory $repo
+
+# 2) Unter der gMSA ausfuehren (beachte das abschliessende '$', leeres Kennwort).
+nssm set $svc ObjectName 'ADMIN-AD\gmsa-odjsvc$' ''
+
+# 3) Starten.
+nssm start $svc
+```
+
+Auf dem Host, der den Dienst ausfuehrt, muss die gMSA installiert sein
+(`Install-ADServiceAccount`, Schritt 3) und der Host Mitglied von
+`GG-ODJ-Hosts` sein.
 
 ## 7. Funktion pruefen
 
@@ -308,7 +340,7 @@ Positivliste und Audit-Log derzeit im Pode-Skript liegen und im gewaehlten
 Framework neu umgesetzt werden muessten. Fuer die meisten Umgebungen ist
 **Variante A** einfacher und nutzt den mitgelieferten Code unveraendert.
 
-| | Variante A (Reverse Proxy) | Variante B (natives IIS) |
+| Aspekt | Variante A (Reverse Proxy) | Variante B (natives IIS) |
 | --- | --- | --- |
 | Code-Aenderungen | Keine (nur Konfiguration) | Endpunkt neu umsetzen |
 | gMSA-Identitaet | Auf dem Pode-Windows-Dienst | IIS-Anwendungspool-Identitaet |

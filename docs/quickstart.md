@@ -175,8 +175,38 @@ For testing, interactively:
 .\src\WebService\Start-OfflineJoinService.ps1
 ```
 
-For production, register it as a **Windows service under the gMSA** (e.g. with
-`nssm`) so the service runs permanently under the delegated identity.
+For production, register it as a **Windows service under the gMSA** so the
+service runs permanently under the delegated identity.
+
+`nssm` — the [Non-Sucking Service Manager](https://nssm.cc/) — is a small,
+free open-source helper that turns any executable (here: `pwsh.exe`/
+`powershell.exe` running the start script) into a proper Windows service,
+including a configurable logon account. Windows has no built-in way to run an
+arbitrary script as a service, and `nssm` also lets you set the service logon
+to a **gMSA** (which the classic `sc.exe`/`New-Service` cannot do directly). It
+is not required — any equivalent wrapper (e.g. a scheduled task at startup, or
+WinSW) works too.
+
+Example (run in an elevated shell; download `nssm.exe` from <https://nssm.cc/>):
+
+```powershell
+$svc  = 'OfflineJoinService'
+$repo = 'C:\Apps\CrossForestOfflineJoin'   # path to this repo on the host
+
+# 1) Create the service that runs the Pode start script.
+nssm install $svc 'pwsh.exe' `
+    "-NoProfile -File `"$repo\src\WebService\Start-OfflineJoinService.ps1`""
+nssm set $svc AppDirectory $repo
+
+# 2) Run it under the gMSA (note the trailing '$', empty password).
+nssm set $svc ObjectName 'ADMIN-AD\gmsa-odjsvc$' ''
+
+# 3) Start it.
+nssm start $svc
+```
+
+The host running the service must have the gMSA installed
+(`Install-ADServiceAccount`, step 3) and be a member of `GG-ODJ-Hosts`.
 
 ## 7. Verify
 
@@ -297,7 +327,7 @@ allow-list and audit logging currently live in the Pode script and would need to
 be re-implemented in the chosen framework. For most deployments **Option A** is
 simpler and reuses the shipped code as-is.
 
-| | Option A (reverse proxy) | Option B (native IIS) |
+| Aspect | Option A (reverse proxy) | Option B (native IIS) |
 | --- | --- | --- |
 | Code changes | None (config only) | Re-implement the endpoint |
 | gMSA identity | On the Pode Windows service | IIS Application Pool identity |

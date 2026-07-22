@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-22
+
+### Changed
+
+- Documentation: clarified what `nssm` is and added a concrete example of
+  registering the Pode service as a Windows service under the gMSA, in both
+  quick-start guides.
+- Documentation: fixed the IIS hosting comparison table (added a header label
+  to the first column so it renders correctly), in both quick-start guides.
+
 ## [1.1.0] - 2026-07-22
 
 ### Added
@@ -46,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/releases/tag/v1.0.0
