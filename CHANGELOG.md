@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-07-22
+
+### Fixed
+
+- `scripts/Set-CrossForestOuDelegation.ps1` no longer fails with "The property
+  'SecurityMasks' cannot be found on this object." `DirectoryEntry.Options`
+  returns `$null` until the entry is bound, so the DACL-only `SecurityMasks` is
+  now set *after* forcing the bind (and the security descriptor is reloaded with
+  a DACL-scoped `RefreshCache`), letting the cross-domain delegation write the
+  ACL successfully.
+
 ## [1.6.0] - 2026-07-22
 
 ### Added
@@ -180,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.3.0...v1.4.0

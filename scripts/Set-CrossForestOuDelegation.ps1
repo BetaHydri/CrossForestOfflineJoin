@@ -121,10 +121,16 @@ try
         $entry = New-Object System.DirectoryServices.DirectoryEntry($ldapPath)
     }
 
-    # Only the DACL is required; requesting it also forces the bind so a missing
-    # OU or a failed authentication surfaces here rather than at commit time.
-    $entry.Options.SecurityMasks = [System.DirectoryServices.SecurityMasks]::Dacl
+    # Force the bind first so a missing OU or a failed authentication surfaces
+    # here rather than at commit time. $entry.Options is $null until the entry
+    # is bound, so the SecurityMasks assignment must come afterwards.
     $null = $entry.Guid
+
+    # Restrict the security descriptor to the DACL: reading it then does not
+    # require SeSecurityPrivilege (SACL) and CommitChanges writes back only the
+    # DACL, so no WriteOwner right is needed.
+    $entry.Options.SecurityMasks = [System.DirectoryServices.SecurityMasks]::Dacl
+    $entry.RefreshCache(@('ntSecurityDescriptor'))
 }
 catch
 {
