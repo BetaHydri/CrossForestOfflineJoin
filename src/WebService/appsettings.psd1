@@ -46,4 +46,20 @@
 
     # Audit log (no blob content is logged).
     AuditLogPath  = 'C:\ProgramData\OfflineJoinService\audit.log'
+
+    # Optional logging settings (BSI IT-Grundschutz OPS.1.1.5). The file log above
+    # is always written. Set EventLog.Enabled = $true to additionally mirror every
+    # security-relevant event to the Windows Event Log, which eases central
+    # collection (e.g. via Windows Event Forwarding to a SIEM). The event source
+    # should be registered once with elevated rights (install.ps1 -EnableEventLog,
+    # or New-EventLog -LogName Application -Source 'OfflineJoinService'); the
+    # service tries a best-effort runtime registration as a fallback. The source
+    # name must be unique and must not equal an existing log name.
+    Logging       = @{
+        EventLog = @{
+            Enabled = $false
+            LogName = 'Application'
+            Source  = 'OfflineJoinService'
+        }
+    }
 }

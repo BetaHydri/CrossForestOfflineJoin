@@ -128,6 +128,9 @@ Datei uebergeben werden. Nach einer Aenderung den Dienst neu starten.
 | `AllowedTargets[].MachineOU` | Distinguished Name der OU, in der das Computerobjekt angelegt wird. | Die gMSA muss auf dieser OU delegiert sein (Schritt 4). |
 | `AllowedTargets[].NamePrefix` | Erforderliches Praefix des Computernamens. | Eine Anfrage ist nur erlaubt, wenn `machineName` mit diesem Praefix beginnt. |
 | `AuditLogPath` | Pfad der Audit-Log-Datei. | Das Verzeichnis wird automatisch erstellt. Es werden keine Blob-/Geheimnisinhalte protokolliert. |
+| `Logging.EventLog.Enabled` | Spiegelt jedes Audit-Ereignis zusaetzlich ins Windows-Ereignisprotokoll. | Standard `$false`. Fuer zentrale Sammlung per Windows Event Forwarding / SIEM auf `$true` setzen. |
+| `Logging.EventLog.LogName` | Ereignisprotokoll (Log), in das geschrieben wird. | Standard `'Application'`. |
+| `Logging.EventLog.Source` | Ereignisquelle (Source). | Standard `'OfflineJoinService'`. Muss eindeutig sein und darf keinem vorhandenen Log-Namen entsprechen. Die Quelle einmalig **mit erhoehten Rechten** registrieren: `install.ps1 -EnableEventLog` oder `New-EventLog -LogName Application -Source 'OfflineJoinService'`. Ohne Meldungs-Ressourcendatei zeigt die Ereignisanzeige eine numerische Kategorie und einen generischen Hinweis; der vollstaendige Audit-Text bleibt im Ereignis (und im Datei-Log) erhalten. |
 
 ### API-Schlussel-Hash
 

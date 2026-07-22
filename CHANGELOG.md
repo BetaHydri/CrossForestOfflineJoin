@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Structured, injection-safe audit logging (BSI OPS.1.1.5).** New
+  `src/WebService/OfflineJoinLogging.ps1` provides a pure line formatter
+  (`Format-OdjAuditEvent`) and a writer (`Write-OdjAuditEvent`) that appends an
+  ISO-8601 UTC `key=value` record to the file log and, optionally, mirrors it to
+  the Windows Event Log. Every value is sanitized (CR/LF/TAB collapsed to a
+  single space) so crafted input cannot forge audit lines. The service now logs
+  successful **and** failed API-key authentication, all ALLOW/DENY/ERROR
+  decisions (API + web UI), and service start/stop — each with the source IP
+  (including `X-Forwarded-For`), the caller/user and the target; no secret
+  content is ever logged.
+- Optional **Windows Event Log** mirror configured via a new `Logging.EventLog`
+  block in `appsettings.psd1` (`Enabled`, `LogName`, `Source`) for central
+  collection through Windows Event Forwarding / SIEM. Events carry numbered
+  categories (Authentication = 1, Provisioning = 2, Service = 3).
+- `install.ps1` gains `-EnableEventLog`, `-EventLogName` and `-EventLogSource`;
+  it registers the event source once (elevated, `New-EventLog`, guarded by
+  `SourceExists`) and writes the `Logging` block into the generated config.
+- Unit tests `tests/Unit/OfflineJoinLogging.Tests.ps1` covering the formatter,
+  the token sanitizer (log-injection), the event-category mapper, the client
+  address helper and the file writer.
 - Folder index READMEs: `docs/README.md` (table of the documentation files) and
   `src/README.md` (table of the source module and web service), rendered by
   GitHub as the folder landing pages.

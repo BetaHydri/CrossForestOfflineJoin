@@ -92,28 +92,63 @@ function Get-Sha256Hex
     }
 }
 
-function Write-AuditLine
+# Structured audit-logging helpers (pure formatter + file/Event-Log writer).
+# Kept separate so they can be unit tested in isolation. Supports BSI
+# IT-Grundschutz OPS.1.1.5 (security-relevant events, log-injection safe).
+. (Join-Path -Path $PSScriptRoot -ChildPath 'OfflineJoinLogging.ps1')
+
+function Write-OdjAudit
 {
+    <#
+    .SYNOPSIS
+        Formats and writes an audit event using the configured file (and the
+        optional Windows Event Log). Thin wrapper over Format-OdjAuditEvent and
+        Write-OdjAuditEvent so route script blocks stay concise.
+    #>
     [CmdletBinding()]
     param
     (
         [Parameter(Mandatory)]
-        [string]
-        $Path,
+        [System.Collections.IDictionary]
+        $Config,
 
         [Parameter(Mandatory)]
         [string]
-        $Message
+        $EventName,
+
+        [Parameter(Mandatory)]
+        [string]
+        $Outcome,
+
+        [Parameter()]
+        [string]
+        $Reason,
+
+        [Parameter()]
+        [AllowNull()]
+        [System.Collections.IDictionary]
+        $Field,
+
+        [Parameter()]
+        [ValidateSet('Information', 'Warning', 'Error')]
+        [string]
+        $EntryType = 'Information',
+
+        [Parameter()]
+        [int]
+        $EventId = 1000
     )
 
-    $dir = Split-Path -Path $Path -Parent
-    if (-not (Test-Path -LiteralPath $dir))
+    $line = Format-OdjAuditEvent -EventName $EventName -Outcome $Outcome -Reason $Reason -Field $Field
+    $category = Get-OdjEventCategory -EventName $EventName
+
+    $eventLog = $null
+    if ($Config.Contains('Logging') -and $Config['Logging'] -and $Config['Logging'].Contains('EventLog'))
     {
-        New-Item -Path $dir -ItemType Directory -Force | Out-Null
+        $eventLog = $Config['Logging'].EventLog
     }
 
-    $line = '{0:o}  {1}' -f [datetime]::UtcNow, $Message
-    Add-Content -LiteralPath $Path -Value $line -Encoding UTF8
+    Write-OdjAuditEvent -Path $Config.AuditLogPath -Line $line -EventLog $eventLog -EntryType $EntryType -EventId $EventId -Category $category
 }
 
 # Web UI HTML builders (pure functions; kept separate for unit testing). Only
@@ -127,19 +162,50 @@ Start-PodeServer {
         -Protocol Https `
         -CertificateThumbprint $config.Endpoint.CertificateThumbprint
 
+    # Service lifecycle: record start (BSI OPS.1.1.5) and, best-effort, stop.
+    Write-OdjAudit -Config $config -EventName 'service' -Outcome 'start' `
+        -Field ([ordered]@{ address = [string]$config.Endpoint.Address; port = [string]$config.Endpoint.Port }) -EventId 4100
+
+    try
+    {
+        Register-PodeEvent -Type Stop -ScriptBlock {
+            $cfg = $using:config
+            try
+            {
+                Write-OdjAudit -Config $cfg -EventName 'service' -Outcome 'stop' -EventId 4101
+            }
+            catch
+            {
+                # Best-effort shutdown logging; never block the stop sequence.
+            }
+        }
+    }
+    catch
+    {
+        # Register-PodeEvent may be unavailable in some Pode versions; ignore.
+    }
+
     # API-key authentication via the 'X-Api-Key' header.
     New-PodeAuthScheme -ApiKey -Location Header -LocationName 'X-Api-Key' |
         Add-PodeAuth -Name 'ApiKeyAuth' -ScriptBlock {
             param($key)
 
+            $cfg = $using:config
+            $ip = Get-OdjClientAddress -WebEvent $WebEvent
+
             $presentedHash = Get-Sha256Hex -Value $key
-            $client = $using:config.ApiClients |
+            $client = $cfg.ApiClients |
                 Where-Object { $_.ApiKeySha256.ToLowerInvariant() -eq $presentedHash }
 
             if ($null -eq $client)
             {
+                Write-OdjAudit -Config $cfg -EventName 'auth' -Outcome 'fail' -Reason 'invalid-api-key' `
+                    -Field ([ordered]@{ ip = $ip }) -EntryType 'Warning' -EventId 4010
                 return $null
             }
+
+            Write-OdjAudit -Config $cfg -EventName 'auth' -Outcome 'ok' `
+                -Field ([ordered]@{ ip = $ip; client = [string]$client.Name }) -EventId 4011
 
             return @{ User = @{ Name = $client.Name } }
         }
@@ -148,6 +214,7 @@ Start-PodeServer {
 
         $cfg = $using:config
         $body = $WebEvent.Data
+        $ip = Get-OdjClientAddress -WebEvent $WebEvent
 
         $machineName = [string]$body.machineName
         $domain = [string]$body.domain
@@ -157,7 +224,8 @@ Start-PodeServer {
         # 1) Input validation.
         if (-not (Test-OdjMachineName -MachineName $machineName))
         {
-            Write-AuditLine -Path $cfg.AuditLogPath -Message "DENY invalid-name client=$client name=$machineName"
+            Write-OdjAudit -Config $cfg -EventName 'provision' -Outcome 'deny' -Reason 'invalid-name' `
+                -Field ([ordered]@{ ip = $ip; client = $client; name = $machineName }) -EntryType 'Warning' -EventId 4001
             Set-PodeResponseStatus -Code 400
             Write-PodeJsonResponse -Value @{ error = 'Invalid computer name.' }
             return
@@ -170,7 +238,8 @@ Start-PodeServer {
 
         if ($null -eq $target)
         {
-            Write-AuditLine -Path $cfg.AuditLogPath -Message "DENY not-allowed client=$client domain=$domain name=$machineName"
+            Write-OdjAudit -Config $cfg -EventName 'provision' -Outcome 'deny' -Reason 'not-allowed' `
+                -Field ([ordered]@{ ip = $ip; client = $client; domain = $domain; name = $machineName }) -EntryType 'Warning' -EventId 4002
             Set-PodeResponseStatus -Code 403
             Write-PodeJsonResponse -Value @{ error = 'Target not in the allow-list.' }
             return
@@ -181,7 +250,8 @@ Start-PodeServer {
         {
             $result = New-OfflineDomainJoinBlob -Domain $target.Domain -MachineName $machineName -MachineOU $target.MachineOU
 
-            Write-AuditLine -Path $cfg.AuditLogPath -Message "ALLOW client=$client domain=$domain name=$machineName ou=$($target.MachineOU)"
+            Write-OdjAudit -Config $cfg -EventName 'provision' -Outcome 'allow' `
+                -Field ([ordered]@{ ip = $ip; client = $client; domain = $domain; name = $machineName; ou = [string]$target.MachineOU }) -EventId 4000
 
             switch ($outputFormat.ToLowerInvariant())
             {
@@ -206,7 +276,8 @@ Start-PodeServer {
         }
         catch
         {
-            Write-AuditLine -Path $cfg.AuditLogPath -Message "ERROR client=$client name=$machineName msg=$($_.Exception.Message)"
+            Write-OdjAudit -Config $cfg -EventName 'provision' -Outcome 'error' -Reason 'provision-failed' `
+                -Field ([ordered]@{ ip = $ip; client = $client; name = $machineName; msg = [string]$_.Exception.Message }) -EntryType 'Error' -EventId 4003
             Set-PodeResponseStatus -Code 500
             Write-PodeJsonResponse -Value @{ error = 'Provisioning failed.' }
         }
@@ -237,13 +308,15 @@ Start-PodeServer {
             $cfg = $using:config
             $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
             $user = [string]$WebEvent.Auth.User.Username
+            $ip = Get-OdjClientAddress -WebEvent $WebEvent
 
             # Anti-CSRF: the posted token must match the one bound to the session.
             $posted = [string]$WebEvent.Data.csrf
             $expected = [string]$WebEvent.Session.Data.csrf
             if ([string]::IsNullOrEmpty($expected) -or $posted -ne $expected)
             {
-                Write-AuditLine -Path $cfg.AuditLogPath -Message "DENY-UI csrf user=$user"
+                Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'csrf' `
+                    -Field ([ordered]@{ ip = $ip; user = $user }) -EntryType 'Warning' -EventId 4021
                 Set-PodeResponseStatus -Code 403
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Denied' -Body '<h1>Request rejected</h1><p>Invalid or expired form token. Please reload the form.</p>')
                 return
@@ -272,7 +345,8 @@ Start-PodeServer {
 
             if (-not (Test-OdjMachineName -MachineName $machineName))
             {
-                Write-AuditLine -Path $cfg.AuditLogPath -Message "DENY-UI invalid-name user=$user name=$machineName"
+                Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'invalid-name' `
+                    -Field ([ordered]@{ ip = $ip; user = $user; name = $machineName }) -EntryType 'Warning' -EventId 4022
                 Set-PodeResponseStatus -Code 400
                 & $renderError 'Invalid computer name.'
                 return
@@ -287,7 +361,8 @@ Start-PodeServer {
 
             if (-not $machineName.StartsWith($target.NamePrefix, [System.StringComparison]::OrdinalIgnoreCase))
             {
-                Write-AuditLine -Path $cfg.AuditLogPath -Message "DENY-UI prefix user=$user domain=$($target.Domain) name=$machineName"
+                Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'deny' -Reason 'prefix' `
+                    -Field ([ordered]@{ ip = $ip; user = $user; domain = [string]$target.Domain; name = $machineName }) -EntryType 'Warning' -EventId 4023
                 Set-PodeResponseStatus -Code 403
                 & $renderError ("Computer name must start with '{0}' for this target." -f $target.NamePrefix)
                 return
@@ -296,7 +371,8 @@ Start-PodeServer {
             try
             {
                 $result = New-OfflineDomainJoinBlob -Domain $target.Domain -MachineName $machineName -MachineOU $target.MachineOU
-                Write-AuditLine -Path $cfg.AuditLogPath -Message "ALLOW-UI user=$user domain=$($target.Domain) name=$machineName ou=$($target.MachineOU)"
+                Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'allow' `
+                    -Field ([ordered]@{ ip = $ip; user = $user; domain = [string]$target.Domain; name = $machineName; ou = [string]$target.MachineOU }) -EventId 4020
 
                 $payload = if ($outputFormat.ToLowerInvariant() -eq 'unattend')
                 {
@@ -312,7 +388,8 @@ Start-PodeServer {
             }
             catch
             {
-                Write-AuditLine -Path $cfg.AuditLogPath -Message "ERROR-UI user=$user name=$machineName msg=$($_.Exception.Message)"
+                Write-OdjAudit -Config $cfg -EventName 'provision-ui' -Outcome 'error' -Reason 'provision-failed' `
+                    -Field ([ordered]@{ ip = $ip; user = $user; name = $machineName; msg = [string]$_.Exception.Message }) -EntryType 'Error' -EventId 4024
                 Set-PodeResponseStatus -Code 500
                 & $renderError 'Provisioning failed.'
             }

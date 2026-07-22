@@ -99,6 +99,7 @@ OfflineJoinService/
 |   `-- WebService/                    # REST-Dienst (Pode)
 |       |-- Start-OfflineJoinService.ps1
 |       |-- OfflineJoinWebUi.ps1        # HTML-Bausteine der optionalen Web-UI
+|       |-- OfflineJoinLogging.ps1      # Strukturierte Audit-Protokollierung (OPS.1.1.5)
 |       `-- appsettings.psd1
 |-- tests/                             # Pester-5-Tests (Unit)
 `-- scripts/
@@ -115,7 +116,7 @@ OfflineJoinService/
 | [README.md](README.md) | Doku | Diese Uebersicht (Deutsch): Problem, Loesung, Architektur, Einrichtung. |
 | [docs/README.md](docs/README.md) | Doku-Index | Inhaltsverzeichnis der `docs/`-Dokumente (Sprache + Inhalt). |
 | [src/README.md](src/README.md) | Quellcode-Index | Inhaltsverzeichnis des `src/`-Quellcodes (Modul + Webdienst). |
-| [install.ps1](install.ps1) | Installer | Automatisierter, wiederholbarer 9-Stufen-Installer (Voraussetzungen, Pode, KDS-Key, Hosts-Gruppe, gMSA, OU-Delegierung, Konfiguration, Dienstregistrierung). Optionen `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`. |
+| [install.ps1](install.ps1) | Installer | Automatisierter, wiederholbarer 9-Stufen-Installer (Voraussetzungen, Pode, KDS-Key, Hosts-Gruppe, gMSA, OU-Delegierung, Konfiguration, Dienstregistrierung). Optionen `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`, `-EnableEventLog`, `-EventLogName`, `-EventLogSource`. |
 | [docs/README.en.md](docs/README.en.md) | Doku | Englische Fassung dieser Uebersicht. |
 | [docs/loesungsvarianten.md](docs/loesungsvarianten.md) | Doku | Variantenvergleich (CredSSP/KCD/RBCD/ODJ/Webdienst) + Double-Hop-Analyse (Deutsch). |
 | [docs/solution-variants.md](docs/solution-variants.md) | Doku | Englische Fassung des Variantenvergleichs. |
@@ -125,7 +126,8 @@ OfflineJoinService/
 | [src/OfflineJoin/OfflineJoin.psm1](src/OfflineJoin/OfflineJoin.psm1) | Modul | Kapselt `djoin`: Eingabevalidierung, Blob-Erzeugung, unattend-Fragment. |
 | [src/WebService/Start-OfflineJoinService.ps1](src/WebService/Start-OfflineJoinService.ps1) | Dienst | Pode-REST-Dienst `POST /api/v1/provision` (TLS, API-Key, Allow-List, Audit) plus optionale Web-UI `GET /ui`. |
 | [src/WebService/OfflineJoinWebUi.ps1](src/WebService/OfflineJoinWebUi.ps1) | Dienst-Baustein | HTML-Bausteine der Web-UI (getrennt, damit unabhaengig testbar; HTML-Encoding gegen XSS). |
-| [src/WebService/appsettings.psd1](src/WebService/appsettings.psd1) | Konfiguration | Endpunkt, API-Client-Hashes, Positivliste, Auditpfad, `WebUi`-Block. |
+| [src/WebService/OfflineJoinLogging.ps1](src/WebService/OfflineJoinLogging.ps1) | Dienst-Baustein | Strukturierte, injektionssichere Audit-Protokollierung (OPS.1.1.5): reiner Zeilen-Formatter plus Datei- und optionaler Windows-Event-Log-Writer. |
+| [src/WebService/appsettings.psd1](src/WebService/appsettings.psd1) | Konfiguration | Endpunkt, API-Client-Hashes, Positivliste, Auditpfad, `WebUi`-Block, optionaler `Logging`/`EventLog`-Block. |
 | [scripts/New-OfflineJoinGmsa.ps1](scripts/New-OfflineJoinGmsa.ps1) | Skript | Legt die gMSA-Dienstidentitaet im Admin-AD-Forest an. |
 | [scripts/Set-CrossForestOuDelegation.ps1](scripts/Set-CrossForestOuDelegation.ps1) | Skript | Delegiert der gMSA je Ziel-OU im Ressourcen-Forest die minimalen Rechte. |
 | [scripts/New-OfflineDomainJoinBlob.ps1](scripts/New-OfflineDomainJoinBlob.ps1) | Skript | Erzeugt einen ODJ-Blob per CLI (ohne Webdienst). |
@@ -282,6 +284,13 @@ Das Architekturdiagramm oben bildet genau diesen Ablauf ab (Knoten
 - **API-Absicherung:** HTTPS, API-Schluessel (als SHA256-Hash gespeichert),
   Positivliste, strenge Eingabevalidierung (Injection-Schutz), Auditprotokoll
   ohne Geheimnisinhalte.
+- **Protokollierung (OPS.1.1.5):** strukturiertes, injektionssicheres Audit-Log
+  aller sicherheitsrelevanten Ereignisse — erfolgreiche **und** fehlgeschlagene
+  Authentifizierung, ALLOW/DENY/ERROR, Dienststart/-stopp — jeweils mit
+  UTC-Zeitstempel, Quell-IP (inkl. `X-Forwarded-For`) und angemeldetem Benutzer.
+  Steuerzeichen werden entfernt (kein Log-Forging). Optional wird jedes Ereignis
+  zusaetzlich ins Windows-Ereignisprotokoll gespiegelt (zentrale Sammlung per
+  Windows Event Forwarding / SIEM).
 - **Web-UI-Absicherung:** nur HTTPS, IIS-Windows-Authentifizierung, Beschraenkung
   auf eine AD-Gruppe (`Add-PodeAuthIIS`), Anti-CSRF-Token, serverseitige
   Neuvalidierung gegen die Positivliste (dem Browser-Aufklappmenue wird nicht
@@ -302,7 +311,7 @@ IT-Grundschutz-Bausteinen zu.
 | ORP.4 | Identitaets- und Berechtigungsmanagement | API-Schluessel-Authentifizierung + Autorisierung gegen die Positivliste; Web-UI auf eine AD-Gruppe beschraenkt; gMSA nach dem Least-Privilege-Prinzip. |
 | APP.3.1 | Webanwendungen und Webservices | Strenge Eingabevalidierung (Injection-Schutz), Anti-CSRF-Token, HTML-Encoding gegen XSS, serverseitige Neuvalidierung, ausschliesslich TLS. |
 | CON.1 | Kryptokonzept | Transport ausschliesslich ueber TLS/HTTPS; API-Schluessel nur als SHA-256-Hash gespeichert; der ODJ-Blob wird als Geheimnis behandelt und kurzlebig gehalten. |
-| OPS.1.1.5 | Protokollierung | Auditprotokoll aller sicherheitsrelevanten Ereignisse (ALLOW/DENY/ERROR) mit UTC-Zeitstempel und **ohne** Geheimnisinhalte. |
+| OPS.1.1.5 | Protokollierung | Strukturiertes, injektionssicheres Audit-Log aller sicherheitsrelevanten Ereignisse (Authentifizierung erfolgreich/fehlgeschlagen, ALLOW/DENY/ERROR, Dienststart/-stopp) mit UTC-Zeitstempel, Quell-IP (inkl. `X-Forwarded-For`) und Benutzer, **ohne** Geheimnisinhalte; optionaler Spiegel ins Windows-Ereignisprotokoll fuer zentrale Sammlung (WEF/SIEM). |
 | CON.8 | Software-Entwicklung | Sichere Entwicklung (OWASP-orientiert), `Set-StrictMode`, `$ErrorActionPreference = 'Stop'`, automatisierte Pester-5-Tests. |
 | SYS.1.1 | Allgemeiner Server | Betrieb unter dedizierter gMSA ohne interaktive Anmeldung; Registrierung als Windows-Dienst. |
 

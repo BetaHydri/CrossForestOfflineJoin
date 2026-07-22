@@ -122,6 +122,9 @@ The service reads all its settings from `src/WebService/appsettings.psd1`
 | `AllowedTargets[].MachineOU` | Distinguished name of the OU the computer object is created in. | The gMSA must be delegated on this OU (step 4). |
 | `AllowedTargets[].NamePrefix` | Required prefix of the computer name. | A request is only allowed if `machineName` starts with this prefix. |
 | `AuditLogPath` | Path of the audit log file. | The directory is created automatically. No blob/secret content is logged. |
+| `Logging.EventLog.Enabled` | Additionally mirrors every audit event to the Windows Event Log. | Default `$false`. Set to `$true` for central collection via Windows Event Forwarding / SIEM. |
+| `Logging.EventLog.LogName` | Event log to write to. | Default `'Application'`. |
+| `Logging.EventLog.Source` | Event source. | Default `'OfflineJoinService'`. Must be unique and must not equal an existing log name. Register the source once **with elevated rights**: `install.ps1 -EnableEventLog` or `New-EventLog -LogName Application -Source 'OfflineJoinService'`. Without a message resource file the Event Viewer shows a numeric category and a generic note; the full audit text is still contained in each event (and in the file log). |
 
 ### API key hash
 

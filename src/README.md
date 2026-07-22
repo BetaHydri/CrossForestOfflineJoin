@@ -24,7 +24,8 @@ die Haupt-README: [../README.md](../README.md) (Deutsch) &middot;
 |--------------|-----------------|
 | [WebService/Start-OfflineJoinService.ps1](WebService/Start-OfflineJoinService.ps1) | Pode-REST-Dienst `POST /api/v1/provision` (TLS, API-Key, Allow-List, Audit) plus optionale Web-UI `GET /ui`. |
 | [WebService/OfflineJoinWebUi.ps1](WebService/OfflineJoinWebUi.ps1) | HTML-Bausteine der Web-UI (getrennt, damit unabhaengig testbar; HTML-Encoding gegen XSS). |
-| [WebService/appsettings.psd1](WebService/appsettings.psd1) | Konfiguration: Endpunkt, API-Client-Hashes, Positivliste, Auditpfad, `WebUi`-Block. |
+| [WebService/OfflineJoinLogging.ps1](WebService/OfflineJoinLogging.ps1) | Strukturierte, injektionssichere Audit-Protokollierung (BSI OPS.1.1.5): Datei-Log plus optionaler Windows-Event-Log-Spiegel. |
+| [WebService/appsettings.psd1](WebService/appsettings.psd1) | Konfiguration: Endpunkt, API-Client-Hashes, Positivliste, Auditpfad, `WebUi`-Block, optionaler `Logging`/`EventLog`-Block. |
 
 ## Verwandtes / Related
 

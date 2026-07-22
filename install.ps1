@@ -204,6 +204,18 @@ param
     $WebUiBasePath = '/ui',
 
     [Parameter()]
+    [switch]
+    $EnableEventLog,
+
+    [Parameter()]
+    [string]
+    $EventLogName = 'Application',
+
+    [Parameter()]
+    [string]
+    $EventLogSource = 'OfflineJoinService',
+
+    [Parameter()]
     [string]
     $ConfigPath,
 
@@ -545,6 +557,7 @@ if ($CertificateThumbprint -or $ApiClientName -or $Target)
     }
 
     $webUiEnabled = if ($EnableWebUi) { '$true' } else { '$false' }
+    $eventLogEnabled = if ($EnableEventLog) { '$true' } else { '$false' }
 
     $content = @"
 @{
@@ -570,6 +583,14 @@ $targetsBlock
     }
 
     AuditLogPath   = '$AuditLogPath'
+
+    Logging        = @{
+        EventLog = @{
+            Enabled = $eventLogEnabled
+            LogName = '$EventLogName'
+            Source  = '$EventLogSource'
+        }
+    }
 }
 "@
 
@@ -587,6 +608,37 @@ $targetsBlock
 }
 
 #endregion 8. Configuration
+
+#region 8b. Windows Event Log source registration (optional)
+
+if ($EnableEventLog)
+{
+    Write-Stage "Registering the Windows Event Log source '$EventLogSource' in log '$EventLogName'"
+
+    # Registering an event source is a privileged, one-time operation (requires
+    # local administrator). A source name must be unique and must not equal an
+    # existing log name. We ship no message resource file, so Event Viewer shows
+    # a numeric category and a generic "description cannot be found" note; the
+    # full audit text is still contained in each event (and in the file log).
+    try
+    {
+        if ([System.Diagnostics.EventLog]::SourceExists($EventLogSource))
+        {
+            Write-Host "Event Log source '$EventLogSource' already exists." -ForegroundColor Green
+        }
+        elseif ($PSCmdlet.ShouldProcess("$EventLogName\$EventLogSource", 'Register Windows Event Log source'))
+        {
+            New-EventLog -LogName $EventLogName -Source $EventLogSource -ErrorAction Stop
+            Write-Host "Event Log source '$EventLogSource' registered in '$EventLogName'." -ForegroundColor Green
+        }
+    }
+    catch
+    {
+        Write-Warning ("Could not register the Event Log source '{0}': {1}. Run this step elevated, or register it manually with: New-EventLog -LogName '{2}' -Source '{0}'." -f $EventLogSource, $_.Exception.Message, $EventLogName)
+    }
+}
+
+#endregion 8b. Windows Event Log source registration
 
 #region 9. Service registration
 
