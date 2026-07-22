@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Clarified in both READMEs that the solution is **platform-independent**:
+  VMware `guestinfo` is only one blob-delivery option; any platform that can
+  request the blob (REST/CLI) and deliver it to the target works (Hyper-V,
+  Nutanix, Proxmox/KVM, physical/MDT/SCCM, cloud VMs, Packer/Terraform/Ansible,
+  cloud-init/unattend.xml). The provisioning step is worded platform-neutrally.
 - READMEs (DE + EN) now reflect the installer and the optional web UI: the
   architecture mermaid includes the admin web-UI path; the project structure and
   resource tables list `install.ps1`, `OfflineJoinWebUi.ps1` and `tests/`; and

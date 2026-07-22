@@ -35,7 +35,8 @@ verwendet und in einem **gMSA-Webdienst** gekapselt:
 1. Der Dienst legt das Computerkonto **serverseitig** unter seiner **eigenen**
    gMSA-Identitaet an (Cross-Forest-OU-Delegierung) und erzeugt einen
    Base64-**Blob**.
-2. VMware injiziert den Blob in die neue VM (per `guestinfo` oder unattend.xml).
+2. Die Plattform/Automatisierung injiziert den Blob in die neue VM bzw. den
+   Zielrechner (z. B. VMware `guestinfo`, unattend.xml oder cloud-init).
 3. Die VM wendet den Blob **offline** an — kein DC-Kontakt, keine Credentials.
 
 Damit **entfaellt das Double-Hop-Problem konstruktiv**: Es werden zu keinem
@@ -69,6 +70,17 @@ flowchart LR
     A -- guestinfo / unattend --> VM
     VM -- djoin /requestODJ (offline) --> VM
 ```
+
+> **Plattformunabhaengig — VMware ist nur ein Beispiel.** Die Loesung ist nicht
+> an VMware gebunden. Der Kern ist der **serverseitig erzeugte ODJ-Blob** und
+> dessen **Offline-Anwendung** auf dem Zielrechner; VMware `guestinfo` ist nur
+> *eine* Moeglichkeit, den Blob auszuliefern. Geeignet ist jede Plattform, die
+> (1) den Blob per REST-API oder CLI anfordern und (2) auf das Ziel bringen kann
+> — z. B. **Hyper-V/SCVMM**, **Nutanix AHV**, **Proxmox/KVM**, **physische
+> Rechner** (MDT/SCCM/OSD), **Cloud-VMs** (Azure/AWS/GCP) sowie Tools wie
+> **Packer**, **Terraform**, **Ansible** oder **cloud-init/unattend.xml**. Da der
+> Join offline erfolgt, funktioniert auch ein Ziel **ohne AD-Konnektivitaet** zum
+> Zeitpunkt der Bereitstellung.
 
 ## Projektstruktur
 

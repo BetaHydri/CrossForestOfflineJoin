@@ -33,7 +33,8 @@ and wrapped in a **gMSA web service**:
 
 1. The service creates the computer account **server-side** under its **own**
    gMSA identity (cross-forest OU delegation) and produces a Base64 **blob**.
-2. VMware injects the blob into the new VM (via `guestinfo` or unattend.xml).
+2. The platform/automation injects the blob into the new VM or target machine
+   (e.g. VMware `guestinfo`, unattend.xml or cloud-init).
 3. The VM applies the blob **offline** — no DC contact, no credentials.
 
 This **eliminates the double-hop problem by design**: at no point are user
@@ -67,6 +68,16 @@ flowchart LR
     A -- guestinfo / unattend --> VM
     VM -- djoin /requestODJ (offline) --> VM
 ```
+
+> **Platform-independent — VMware is only an example.** The solution is not tied
+> to VMware. Its core is the **server-side ODJ blob** and its **offline
+> application** on the target machine; VMware `guestinfo` is only *one* way to
+> deliver the blob. Any platform works that can (1) request the blob via the REST
+> API or CLI and (2) deliver it to the target — e.g. **Hyper-V/SCVMM**, **Nutanix
+> AHV**, **Proxmox/KVM**, **physical machines** (MDT/SCCM/OSD), **cloud VMs**
+> (Azure/AWS/GCP), and tools such as **Packer**, **Terraform**, **Ansible** or
+> **cloud-init/unattend.xml**. Because the join happens offline, a target
+> **without AD connectivity** at provisioning time also works.
 
 ## Project structure
 
