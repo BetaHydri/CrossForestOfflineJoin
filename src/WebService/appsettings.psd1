@@ -34,6 +34,16 @@
         }
     )
 
+    # Optional browser form for AD admins. Requires IIS Windows Authentication
+    # hosting (see the quick-start section "Web UI for AD admins"). Only members
+    # of AdminGroup may open the form; the server re-validates every request
+    # against AllowedTargets above. Disabled by default.
+    WebUi         = @{
+        Enabled    = $false
+        AdminGroup = 'GG-ODJ-WebAdmins'
+        BasePath   = '/ui'
+    }
+
     # Audit log (no blob content is logged).
     AuditLogPath  = 'C:\ProgramData\OfflineJoinService\audit.log'
 }

@@ -54,6 +54,14 @@ param
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Characters stripped from a transported blob: the byte-order mark (U+FEFF)
+# plus surrounding whitespace. This mirrors the trimming in
+# New-OfflineDomainJoinBlob so that a UTF-8/UTF-16 BOM which survives the
+# round-trip (a blob file saved as UTF-8-with-BOM, or a guestinfo value) never
+# leaks into the Unicode file handed to 'djoin /requestODJ /loadfile'. A stray
+# U+FEFF in the payload would otherwise make djoin reject the blob.
+$script:BlobTrimChars = [char[]]@([char]0xFEFF, [char]0x20, [char]0x0D, [char]0x0A, [char]0x09)
+
 function Get-BlobFromGuestInfo
 {
     [CmdletBinding()]
@@ -77,7 +85,7 @@ function Get-BlobFromGuestInfo
         throw "guestinfo variable '$Key' is empty or not set."
     }
 
-    return $value.Trim()
+    return $value.Trim($script:BlobTrimChars)
 }
 
 $djoin = Join-Path -Path $env:SystemRoot -ChildPath 'System32\djoin.exe'
@@ -99,7 +107,10 @@ else
         throw "Blob file '$BlobPath' was not found."
     }
     Write-Verbose "Reading blob from file '$BlobPath'."
-    $blob = (Get-Content -LiteralPath $BlobPath -Raw).Trim()
+    # No -Encoding: Get-Content honours a leading BOM (UTF-8/UTF-16) and reads
+    # plain ASCII/UTF-8 Base64 correctly. Any BOM that is not auto-consumed is
+    # removed by the explicit U+FEFF trim below.
+    $blob = (Get-Content -LiteralPath $BlobPath -Raw).Trim($script:BlobTrimChars)
 }
 
 # Write the blob to a temporary Unicode file for djoin.

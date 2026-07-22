@@ -356,4 +356,63 @@ Framework neu umgesetzt werden muessten. Fuer die meisten Umgebungen ist
 | TLS / Zertifikatsverwaltung | IIS | IIS |
 | Aufwand | Gering | Hoch |
 
+## Web UI fuer AD-Administratoren
+
+Zusaetzlich zur Maschine-zu-Maschine-API kann der Dienst ein optionales,
+abgesichertes **Browserformular** bereitstellen, mit dem AD-Administratoren
+einen Offline-Domain-Join-Blob interaktiv erzeugen — ohne API-Schluessel oder
+Skripting. Standardmaessig ist es **deaktiviert**.
+
+### Sicherheitsmodell
+
+- **Windows-Authentifizierung ueber IIS.** Das Formular ist nur nutzbar, wenn
+  der Dienst hinter IIS mit aktivierter Windows-Authentifizierung gehostet wird
+  (siehe *Hosting-Alternative: Windows Server mit IIS*, Variante A). IIS reicht
+  die Windows-Identitaet des Aufrufers durch; die Pode-Route vertraut nichts
+  anderem.
+- **Gruppenbeschraenkt.** Nur Mitglieder der konfigurierten Admin-Gruppe
+  (`WebUi.AdminGroup`, Standard `GG-ODJ-WebAdmins`) duerfen das Formular
+  oeffnen.
+- **Serverseitige Validierung.** Jede Anfrage wird erneut gegen
+  `AllowedTargets` geprueft; der Browser sendet nur einen *Zielindex*, niemals
+  eine rohe Domaene oder OU. Computernamen werden wie an der API validiert.
+- **Anti-CSRF.** Jede Formularausgabe enthaelt ein sitzungsgebundenes Token,
+  das beim Absenden zurueckgegeben werden muss (Pode-Session-Middleware).
+- **Auditiert.** Formularaktionen werden als `ALLOW-UI`-, `DENY-UI`- und
+  `ERROR-UI`-Zeilen protokolliert (kein Blob-Inhalt wird geloggt).
+
+### Aktivieren
+
+Bei der Installation die Web-UI-Schalter ergaenzen:
+
+```powershell
+.\install.ps1 `
+    -CertificateThumbprint 'ABCD...1234' `
+    -ApiClientName 'aria' -ApiKey $key `
+    -Target @{ Domain='res-a.example.com'; MachineOU='OU=Server,DC=res-a,DC=example,DC=com'; NamePrefix='RESA' } `
+    -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -WebUiBasePath '/ui'
+```
+
+Oder direkt in `appsettings.psd1` setzen:
+
+```powershell
+WebUi = @{
+    Enabled    = $true
+    AdminGroup = 'GG-ODJ-WebAdmins'
+    BasePath   = '/ui'
+}
+```
+
+### Verwenden
+
+1. `https://<Dienst-Host>/ui` (oder eigener `BasePath`) im Browser oeffnen. IIS
+   fragt nach Windows-Anmeldedaten; Nicht-Mitglieder der Admin-Gruppe werden
+   abgewiesen.
+2. Computernamen eingeben, ein Ziel aus dem Dropdown (aus `AllowedTargets`
+   befuellt) waehlen und das Ausgabeformat waehlen — **blob** (Base64) oder
+   **unattend** (XML-Fragment).
+3. Absenden. Die Ergebnisseite zeigt den erzeugten Blob bzw. das Unattend-XML,
+   erzeugt ueber denselben `New-OfflineDomainJoinBlob`- /
+   `ConvertTo-OdjUnattendXml`-Codepfad wie die API.
+
 ## See Also

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-22
+
+### Added
+
+- Optional **secured web UI** for AD admins: a browser form served by the Pode
+  service (`GET /ui`) that pre-populates the allowed domain/OU targets in a
+  drop-down. Secured for IIS Windows Authentication hosting — restricted to a
+  configurable AD group (`WebUi.AdminGroup`) via `Add-PodeAuthIIS`, with an
+  anti-CSRF token, server-side re-validation against the allow-list, HTTPS, and
+  audit logging of the authenticated Windows user. Disabled by default
+  (`WebUi.Enabled`). Documented in both quick-start guides.
+- `install.ps1`: new `-EnableWebUi`, `-WebUiAdminGroup` and `-WebUiBasePath`
+  parameters that write the `WebUi` block into the generated configuration.
+- **Pester 5 unit tests** under `tests/Unit/` for the `OfflineJoin` module
+  functions and the new web-UI HTML builders (including HTML-encoding/XSS and
+  allow-list checks). 45 tests.
+
+### Changed
+
+- Extracted the web-UI HTML builder functions into
+  `src/WebService/OfflineJoinWebUi.ps1` (dot-sourced by the service) so they can
+  be unit-tested in isolation without starting Pode.
+
 ## [1.2.0] - 2026-07-22
 
 ### Added
@@ -68,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.0.0...v1.1.0

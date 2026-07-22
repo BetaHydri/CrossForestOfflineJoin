@@ -341,4 +341,59 @@ simpler and reuses the shipped code as-is.
 | TLS / cert management | IIS | IIS |
 | Effort | Low | High |
 
+## Web UI for AD admins
+
+In addition to the machine-to-machine API, the service can expose an optional
+secured **browser form** so AD admins can generate an offline domain join blob
+interactively — no API key or scripting required. It is **disabled by default**.
+
+### Security model
+
+- **Windows Authentication via IIS.** The form is only usable when the service
+  is hosted behind IIS with Windows Authentication enabled (see *Hosting
+  alternative: Windows Server with IIS*, Option A). IIS forwards the caller's
+  Windows identity; the Pode route trusts nothing else.
+- **Group-restricted.** Only members of the configured admin group
+  (`WebUi.AdminGroup`, default `GG-ODJ-WebAdmins`) may open the form.
+- **Server-side validation.** Every request is re-validated against
+  `AllowedTargets`; the browser only submits a *target index*, never a raw
+  domain or OU. Computer names are validated the same way as on the API.
+- **Anti-CSRF.** Each form render embeds a per-session token that must be
+  echoed on submit, backed by Pode session middleware.
+- **Audited.** Form actions are written to the audit log as `ALLOW-UI`,
+  `DENY-UI` and `ERROR-UI` lines (no blob content is logged).
+
+### Enable it
+
+During install, add the Web UI switches:
+
+```powershell
+.\install.ps1 `
+    -CertificateThumbprint 'ABCD...1234' `
+    -ApiClientName 'aria' -ApiKey $key `
+    -Target @{ Domain='res-a.example.com'; MachineOU='OU=Server,DC=res-a,DC=example,DC=com'; NamePrefix='RESA' } `
+    -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -WebUiBasePath '/ui'
+```
+
+Or set it directly in `appsettings.psd1`:
+
+```powershell
+WebUi = @{
+    Enabled    = $true
+    AdminGroup = 'GG-ODJ-WebAdmins'
+    BasePath   = '/ui'
+}
+```
+
+### Use it
+
+1. Browse to `https://<service-host>/ui` (or your custom `BasePath`). IIS
+   prompts for Windows credentials; non-members of the admin group are rejected.
+2. Enter the computer name, pick a target from the drop-down (populated from
+   `AllowedTargets`) and choose the output format — **blob** (Base64) or
+   **unattend** (XML fragment).
+3. Submit. The result page shows the generated blob or unattend XML, produced
+   by the same `New-OfflineDomainJoinBlob` / `ConvertTo-OdjUnattendXml` code
+   path used by the API.
+
 ## See Also
