@@ -288,6 +288,41 @@ Das Architekturdiagramm oben bildet genau diesen Ablauf ab (Knoten
   vertraut), Audit mit angemeldetem Windows-Benutzer.
 - **CredSSP wird nicht verwendet.**
 
+## BSI IT-Grundschutz (Deutschland / Public Sector)
+
+Diese Loesung wurde an den Anforderungen der **aktuell geltenden BSI
+IT-Grundschutz-Bausteine (Edition 2023)** ausgerichtet und ist damit fuer den
+Einsatz bei Behoerden und im oeffentlichen Sektor in Deutschland geeignet. Die
+folgende Tabelle ordnet die umgesetzten Sicherheitsmassnahmen den relevanten
+IT-Grundschutz-Bausteinen zu.
+
+| Baustein | Titel | Umsetzung in dieser Loesung |
+|----------|-------|-----------------------------|
+| APP.2.2 | Active Directory Domain Services | Least-Privilege-OU-Delegierung statt Domaenen-Admin, dedizierte gMSA-Dienstidentitaet, Offline Domain Join **ohne** Anmeldeinformationen auf dem Ziel. |
+| ORP.4 | Identitaets- und Berechtigungsmanagement | API-Schluessel-Authentifizierung + Autorisierung gegen die Positivliste; Web-UI auf eine AD-Gruppe beschraenkt; gMSA nach dem Least-Privilege-Prinzip. |
+| APP.3.1 | Webanwendungen und Webservices | Strenge Eingabevalidierung (Injection-Schutz), Anti-CSRF-Token, HTML-Encoding gegen XSS, serverseitige Neuvalidierung, ausschliesslich TLS. |
+| CON.1 | Kryptokonzept | Transport ausschliesslich ueber TLS/HTTPS; API-Schluessel nur als SHA-256-Hash gespeichert; der ODJ-Blob wird als Geheimnis behandelt und kurzlebig gehalten. |
+| OPS.1.1.5 | Protokollierung | Auditprotokoll aller sicherheitsrelevanten Ereignisse (ALLOW/DENY/ERROR) mit UTC-Zeitstempel und **ohne** Geheimnisinhalte. |
+| CON.8 | Software-Entwicklung | Sichere Entwicklung (OWASP-orientiert), `Set-StrictMode`, `$ErrorActionPreference = 'Stop'`, automatisierte Pester-5-Tests. |
+| SYS.1.1 | Allgemeiner Server | Betrieb unter dedizierter gMSA ohne interaktive Anmeldung; Registrierung als Windows-Dienst. |
+
+> **Geteilte Verantwortung.** IT-Grundschutz-Konformitaet ist letztlich eine
+> Eigenschaft des **Informationssicherheits-Managementsystems (ISMS) der
+> betreibenden Organisation**, nicht eines einzelnen Produkts. Die Loesung
+> liefert die technischen Voraussetzungen; in der Verantwortung des Betreibers
+> bleiben u. a. die Zertifikats-/Schluesselverwaltung (CON.1), die zentrale
+> Protokollierung bzw. SIEM-Anbindung sowie Aufbewahrung und Manipulationsschutz
+> der Protokolle (OPS.1.1.5), die Server-Haertung und das Patch-Management
+> (SYS.1.1, OPS.1) sowie die Einbindung in das eigene Berechtigungskonzept
+> (ORP.4). Fuer den Umgang mit Verschlusssachen (z. B. VS-NfD) ist eine
+> gesonderte Freigabe/Bewertung erforderlich.
+
+**Referenzen:**
+
+- [BSI IT-Grundschutz-Kompendium (Edition 2023)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/it-grundschutz-kompendium_node.html)
+- [IT-Grundschutz-Bausteine (Edition 2023)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/IT-Grundschutz-Bausteine/Bausteine_Download_Edition_node.html)
+- [BSI IT-Grundschutz (Uebersicht und Methodik / BSI-Standards 200-x)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/it-grundschutz_node.html)
+
 ## See Also
 
 - [docs/schnellstart.md](docs/schnellstart.md) &middot; [docs/quickstart.md](docs/quickstart.md)

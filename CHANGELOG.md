@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **VMware Aria Automation (vRA) / Aria Automation Orchestrator (vRO)**
   integration section and reference links (Broadcom TechDocs) in both READMEs,
   describing the `POST /api/v1/provision` -> `guestinfo` -> first-boot flow.
+- **BSI IT-Grundschutz (Germany / public sector)** section in both READMEs: a
+  mapping table of the implemented security measures to the currently applicable
+  IT-Grundschutz building blocks (Edition 2023) — APP.2.2, ORP.4, APP.3.1,
+  CON.1, OPS.1.1.5, CON.8, SYS.1.1 — a shared-responsibility note, and reference
+  links to the BSI IT-Grundschutz-Kompendium and building blocks. Documents that
+  the solution was developed in line with the currently applicable BSI
+  IT-Grundschutz guidelines.
 
 ### Changed
 

@@ -286,6 +286,40 @@ automation* node).
   authenticated Windows user.
 - **CredSSP is not used.**
 
+## BSI IT-Grundschutz (Germany / Public Sector)
+
+This solution was designed in line with the requirements of the **currently
+applicable BSI IT-Grundschutz building blocks (Edition 2023)** and is therefore
+suitable for use by public-sector organisations and government agencies in
+Germany. The table below maps the implemented security measures to the relevant
+IT-Grundschutz building blocks.
+
+| Building block | Title | Implementation in this solution |
+|----------------|-------|---------------------------------|
+| APP.2.2 | Active Directory Domain Services | Least-privilege per-OU delegation instead of domain admin, a dedicated gMSA service identity, Offline Domain Join **without** credentials on the target. |
+| ORP.4 | Identity and access management | API-key authentication + authorization against the allow-list; web UI restricted to an AD group; gMSA follows the least-privilege principle. |
+| APP.3.1 | Web applications and web services | Strict input validation (injection protection), anti-CSRF token, HTML encoding against XSS, server-side re-validation, TLS only. |
+| CON.1 | Cryptographic concept | Transport over TLS/HTTPS only; API key stored only as a SHA-256 hash; the ODJ blob is treated as a secret and kept short-lived. |
+| OPS.1.1.5 | Logging | Audit log of all security-relevant events (ALLOW/DENY/ERROR) with UTC timestamps and **without** secret content. |
+| CON.8 | Software development | Secure development (OWASP-oriented), `Set-StrictMode`, `$ErrorActionPreference = 'Stop'`, automated Pester 5 tests. |
+| SYS.1.1 | Generic server | Operated under a dedicated gMSA without interactive logon; registered as a Windows service. |
+
+> **Shared responsibility.** IT-Grundschutz conformity is ultimately a property
+> of the **operating organisation's information security management system
+> (ISMS)**, not of a single product. The solution provides the technical
+> prerequisites; the operator remains responsible for, among others, certificate
+> and key management (CON.1), central logging / SIEM integration as well as
+> retention and tamper protection of the logs (OPS.1.1.5), server hardening and
+> patch management (SYS.1.1, OPS.1), and integration into the organisation's own
+> authorization concept (ORP.4). Handling classified information (e.g. VS-NfD)
+> requires a separate approval/assessment.
+
+**References:**
+
+- [BSI IT-Grundschutz-Kompendium (Edition 2023)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/it-grundschutz-kompendium_node.html)
+- [IT-Grundschutz building blocks (Edition 2023)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/IT-Grundschutz-Bausteine/Bausteine_Download_Edition_node.html)
+- [BSI IT-Grundschutz (overview and methodology / BSI Standards 200-x)](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/it-grundschutz_node.html)
+
 ## See Also
 
 - [quickstart.md](quickstart.md) &middot; [schnellstart.md](schnellstart.md)
