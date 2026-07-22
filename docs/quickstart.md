@@ -237,6 +237,91 @@ Apply it on the target VM (first boot):
 .\scripts\Invoke-OfflineDomainJoinRequest.ps1 -GuestInfoKey 'guestinfo.odjblob'
 ```
 
+## Dry run: two-forest lab with a self-signed certificate
+
+For a risk-free test you can first run the whole installation as a **dry run**
+with `-WhatIf`. The installer then only prints the planned changes and touches
+nothing. This example sets up the service **and** the web UI, uses a self-signed
+certificate and creates the web UI admin group.
+
+Lab assumptions:
+
+- The service runs in the root domain `forest1.net` (that is where the gMSA
+  lives and where IIS/Windows resolves the caller identity).
+- Target domains, each with an `OU=Server` in its root:
+  - `child.forest1.net` (child domain in the same forest, **no** trust needed)
+  - `forest2.net` (foreign forest, via the transitive forest trust)
+  - `child.forest2.net` (foreign forest, via the same trust)
+- The **transitive forest trust** `forest1.net` <-> `forest2.net` already exists.
+
+### 1. Create a self-signed certificate (elevated, on the forest1.net host)
+
+```powershell
+$cert = New-SelfSignedCertificate `
+    -Subject 'CN=odj.forest1.net' `
+    -DnsName 'odj.forest1.net', 'localhost' `
+    -CertStoreLocation 'Cert:\LocalMachine\My' `
+    -KeyExportPolicy Exportable `
+    -KeyUsage DigitalSignature, KeyEncipherment `
+    -KeyAlgorithm RSA -KeyLength 2048 `
+    -NotAfter (Get-Date).AddYears(2) `
+    -FriendlyName 'OfflineJoinService (Test)'
+$thumb = $cert.Thumbprint
+"Thumbprint: $thumb"
+```
+
+So that browsers trust the test certificate, optionally export it and import it
+on the clients under `LocalMachine\Root`:
+
+```powershell
+Export-Certificate -Cert $cert -FilePath 'C:\Temp\odj-forest1.cer' | Out-Null
+# On the client: Import-Certificate -FilePath '\\...\odj-forest1.cer' -CertStoreLocation 'Cert:\LocalMachine\Root'
+```
+
+### 2. Capture the API key as a SecureString
+
+```powershell
+$key = Read-Host -AsSecureString 'API key for the first client'
+```
+
+Only the SHA256 hash of the key is written to the configuration; the clear text
+is never stored.
+
+### 3. Dry run of the installation (-WhatIf)
+
+```powershell
+.\install.ps1 `
+    -GmsaName 'gmsa-odjsvc' `
+    -GmsaDns  'gmsa-odjsvc.forest1.net' `
+    -HostsGroupName 'GG-ODJ-Hosts' -CreateHostsGroup -CreateKdsRootKey -InstallPode `
+    -CertificateThumbprint $thumb `
+    -ApiClientName 'lab-test-client' -ApiKey $key `
+    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1' }, `
+            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2' }, `
+            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2' } `
+    -SetOuDelegation `
+    -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -CreateWebUiAdminGroup -WebUiBasePath '/ui' `
+    -EnableEventLog `
+    -WhatIf
+```
+
+Notes:
+
+- `-WhatIf` = dry run: no changes, preview only. To install for real, run the
+  same command again **without** `-WhatIf`.
+- The `NamePrefix` values (`C1`, `F2`, `C2`) are free to choose and constrain the
+  allowed computer names per target.
+- `child.forest1.net` is a child domain in the same forest and needs no trust;
+  `forest2.net` and `child.forest2.net` are reached via the existing forest
+  trust.
+- OU delegation (`-SetOuDelegation`, stage 7) must run against **each** resource
+  forest and requires write rights on that `OU=Server`. If this is not possible
+  from the forest1.net host, run `scripts/Set-CrossForestOuDelegation.ps1`
+  separately from within each forest.
+- To test only the configuration (without the AD stages), use the same command
+  without `-GmsaName`, `-CreateHostsGroup`, `-CreateKdsRootKey`,
+  `-SetOuDelegation` and `-CreateWebUiAdminGroup`.
+
 ## Troubleshooting (common pitfalls)
 
 - **`Test-ADServiceAccount` returns False:** the host server is not a member of
@@ -357,7 +442,9 @@ interactively — no API key or scripting required. It is **disabled by default*
   alternative: Windows Server with IIS*, Option A). IIS forwards the caller's
   Windows identity; the Pode route trusts nothing else.
 - **Group-restricted.** Only members of the configured admin group
-  (`WebUi.AdminGroup`, default `GG-ODJ-WebAdmins`) may open the form.
+  (`WebUi.AdminGroup`, default `GG-ODJ-WebAdmins`) may open the form. The group
+  must already exist; the installer can create it on request with
+  `-CreateWebUiAdminGroup` (add the members yourself with `Add-ADGroupMember`).
 - **Server-side validation.** Every request is re-validated against
   `AllowedTargets`; the browser only submits a *target index*, never a raw
   domain or OU. Computer names are validated the same way as on the API.
@@ -378,7 +465,9 @@ During install, add the Web UI switches:
     -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -WebUiBasePath '/ui'
 ```
 
-Or set it directly in `appsettings.psd1`:
+If the admin group does not exist yet, the installer creates it with
+`-CreateWebUiAdminGroup` as a global security group (then add the authorised
+administrators with `Add-ADGroupMember`).
 
 ```powershell
 WebUi = @{

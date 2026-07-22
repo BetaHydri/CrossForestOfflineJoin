@@ -247,6 +247,92 @@ Auf der Ziel-VM (First-Boot) anwenden:
 .\scripts\Invoke-OfflineDomainJoinRequest.ps1 -GuestInfoKey 'guestinfo.odjblob'
 ```
 
+## Trockentest: Zwei-Forest-Lab mit Self-Signed-Zertifikat
+
+Fuer einen risikofreien Test kannst du die komplette Installation zuerst als
+**Trockenlauf** mit `-WhatIf` durchspielen. Der Installer zeigt dann nur die
+geplanten Aenderungen an und fasst nichts an. Dieses Beispiel richtet Dienst
+**und** Web-UI ein, nutzt ein selbst signiertes Zertifikat und legt die
+Web-UI-Admin-Gruppe an.
+
+Annahme fuer das Lab:
+
+- Der Dienst laeuft in der Root-Domaene `forest1.net` (dort liegt die gMSA und
+  loest IIS/Windows die Aufruferidentitaet auf).
+- Ziel-Domaenen mit je einer `OU=Server` in der Root:
+  - `child.forest1.net` (Kind-Domaene im selben Forest, **kein** Trust noetig)
+  - `forest2.net` (fremder Forest, ueber den transitiven Forest-Trust)
+  - `child.forest2.net` (fremder Forest, ueber denselben Trust)
+- Der **transitive Forest-Trust** `forest1.net` <-> `forest2.net` besteht bereits.
+
+### 1. Self-Signed-Zertifikat erzeugen (elevated, auf dem forest1.net-Host)
+
+```powershell
+$cert = New-SelfSignedCertificate `
+    -Subject 'CN=odj.forest1.net' `
+    -DnsName 'odj.forest1.net', 'localhost' `
+    -CertStoreLocation 'Cert:\LocalMachine\My' `
+    -KeyExportPolicy Exportable `
+    -KeyUsage DigitalSignature, KeyEncipherment `
+    -KeyAlgorithm RSA -KeyLength 2048 `
+    -NotAfter (Get-Date).AddYears(2) `
+    -FriendlyName 'OfflineJoinService (Test)'
+$thumb = $cert.Thumbprint
+"Thumbprint: $thumb"
+```
+
+Damit Browser dem Testzertifikat vertrauen, exportierst du es optional und
+importierst es auf den Clients unter `LocalMachine\Root`:
+
+```powershell
+Export-Certificate -Cert $cert -FilePath 'C:\Temp\odj-forest1.cer' | Out-Null
+# Auf dem Client: Import-Certificate -FilePath '\\...\odj-forest1.cer' -CertStoreLocation 'Cert:\LocalMachine\Root'
+```
+
+### 2. API-Key als SecureString erfassen
+
+```powershell
+$key = Read-Host -AsSecureString 'API-Key fuer den ersten Client'
+```
+
+Nur der SHA256-Hash des Keys wird in die Konfiguration geschrieben; der Klartext
+wird nie gespeichert.
+
+### 3. Trockenlauf der Installation (-WhatIf)
+
+```powershell
+.\install.ps1 `
+    -GmsaName 'gmsa-odjsvc' `
+    -GmsaDns  'gmsa-odjsvc.forest1.net' `
+    -HostsGroupName 'GG-ODJ-Hosts' -CreateHostsGroup -CreateKdsRootKey -InstallPode `
+    -CertificateThumbprint $thumb `
+    -ApiClientName 'lab-test-client' -ApiKey $key `
+    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1' }, `
+            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2' }, `
+            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2' } `
+    -SetOuDelegation `
+    -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -CreateWebUiAdminGroup -WebUiBasePath '/ui' `
+    -EnableEventLog `
+    -WhatIf
+```
+
+Hinweise:
+
+- `-WhatIf` = Trockenlauf: keine Aenderung, nur Vorschau. Zum echten Installieren
+  denselben Aufruf **ohne** `-WhatIf` erneut ausfuehren.
+- Die `NamePrefix`-Werte (`C1`, `F2`, `C2`) sind frei waehlbar und begrenzen die
+  erlaubten Computernamen je Ziel.
+- `child.forest1.net` ist eine Kind-Domaene im selben Forest und braucht keinen
+  Trust; `forest2.net` und `child.forest2.net` werden ueber den bestehenden
+  Forest-Trust erreicht.
+- Die OU-Delegierung (`-SetOuDelegation`, Stufe 7) muss gegen **jeden**
+  Ressourcen-Forest laufen und dort Schreibrechte auf der jeweiligen `OU=Server`
+  haben. Ist das vom forest1.net-Host aus nicht moeglich, fuehre
+  `scripts/Set-CrossForestOuDelegation.ps1` separat im jeweiligen Forest aus.
+- Nur die Konfiguration testen (ohne AD-Stufen): denselben Aufruf ohne
+  `-GmsaName`, `-CreateHostsGroup`, `-CreateKdsRootKey`, `-SetOuDelegation` und
+  `-CreateWebUiAdminGroup` verwenden.
+
 ## Fehlerbehebung (haeufige Stolpersteine)
 
 - **`Test-ADServiceAccount` liefert False:** Hostserver ist nicht Mitglied der
@@ -375,7 +461,9 @@ Skripting. Standardmaessig ist es **deaktiviert**.
   anderem.
 - **Gruppenbeschraenkt.** Nur Mitglieder der konfigurierten Admin-Gruppe
   (`WebUi.AdminGroup`, Standard `GG-ODJ-WebAdmins`) duerfen das Formular
-  oeffnen.
+  oeffnen. Die Gruppe muss bereits existieren; der Installer legt sie auf
+  Wunsch mit `-CreateWebUiAdminGroup` an (Mitglieder danach selbst per
+  `Add-ADGroupMember` aufnehmen).
 - **Serverseitige Validierung.** Jede Anfrage wird erneut gegen
   `AllowedTargets` geprueft; der Browser sendet nur einen *Zielindex*, niemals
   eine rohe Domaene oder OU. Computernamen werden wie an der API validiert.
@@ -396,7 +484,9 @@ Bei der Installation die Web-UI-Schalter ergaenzen:
     -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -WebUiBasePath '/ui'
 ```
 
-Oder direkt in `appsettings.psd1` setzen:
+Existiert die Admin-Gruppe noch nicht, legt der Installer sie mit
+`-CreateWebUiAdminGroup` als globale Sicherheitsgruppe an (danach die
+berechtigten Administratoren per `Add-ADGroupMember` hinzufuegen).
 
 ```powershell
 WebUi = @{

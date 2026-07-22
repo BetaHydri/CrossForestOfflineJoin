@@ -16,6 +16,7 @@
       2. Install the Pode module          (-InstallPode).
       3. Ensure a KDS root key exists      (-CreateKdsRootKey).
       4. Ensure the hosts security group   (-CreateHostsGroup).
+     4b. Ensure the Web UI admin group     (-CreateWebUiAdminGroup).
       5. Create the gMSA                   (-GmsaName / -GmsaDns).
       6. Install the gMSA on this host     (default; skip with -SkipGmsaInstall).
       7. Delegate the target OUs           (-SetOuDelegation, per -Target).
@@ -88,6 +89,11 @@
 
 .PARAMETER WebUiAdminGroup
     AD group whose members may use the web form. Default 'GG-ODJ-WebAdmins'.
+
+.PARAMETER CreateWebUiAdminGroup
+    Create WebUiAdminGroup as a global security group in the service host's
+    domain if it does not exist. No members are added automatically; add the
+    authorised administrators yourself with Add-ADGroupMember afterwards.
 
 .PARAMETER WebUiBasePath
     URL base path of the web form. Default '/ui'.
@@ -198,6 +204,10 @@ param
     [Parameter()]
     [string]
     $WebUiAdminGroup = 'GG-ODJ-WebAdmins',
+
+    [Parameter()]
+    [switch]
+    $CreateWebUiAdminGroup,
 
     [Parameter()]
     [string]
@@ -341,14 +351,14 @@ function Test-TargetEntry
 
 Write-Stage 'Checking prerequisites'
 
-$needsAdmin = $CreateKdsRootKey -or $CreateHostsGroup -or $GmsaName -or (-not $SkipGmsaInstall -and $GmsaName) -or $RegisterService
+$needsAdmin = $CreateKdsRootKey -or $CreateHostsGroup -or $CreateWebUiAdminGroup -or $GmsaName -or (-not $SkipGmsaInstall -and $GmsaName) -or $RegisterService
 if ($needsAdmin -and -not (Test-IsElevated))
 {
     throw 'This operation requires an elevated PowerShell session (Run as Administrator).'
 }
 
 $hasAdModule = [bool](Get-Module -ListAvailable -Name ActiveDirectory)
-$adStagesRequested = $CreateKdsRootKey -or $CreateHostsGroup -or $GmsaName -or $SetOuDelegation
+$adStagesRequested = $CreateKdsRootKey -or $CreateHostsGroup -or $CreateWebUiAdminGroup -or $GmsaName -or $SetOuDelegation
 if ($adStagesRequested -and -not $hasAdModule)
 {
     throw 'The ActiveDirectory module (RSAT) is required for the requested AD stages but was not found.'
@@ -424,6 +434,30 @@ if ($CreateHostsGroup)
 }
 
 #endregion 4. Hosts group
+
+#region 4b. Web UI admin group
+
+if ($CreateWebUiAdminGroup)
+{
+    if (-not $WebUiAdminGroup)
+    {
+        throw '-CreateWebUiAdminGroup requires -WebUiAdminGroup.'
+    }
+
+    Write-Stage "Ensuring the Web UI admin group '$WebUiAdminGroup'"
+    $webAdminGroup = Get-ADGroup -Filter "Name -eq '$WebUiAdminGroup'" -ErrorAction SilentlyContinue
+    if (-not $webAdminGroup -and $PSCmdlet.ShouldProcess($WebUiAdminGroup, 'Create global security group'))
+    {
+        New-ADGroup -Name $WebUiAdminGroup -GroupScope Global -GroupCategory Security | Out-Null
+        Write-Host "Group '$WebUiAdminGroup' created. Add the authorised administrators with Add-ADGroupMember." -ForegroundColor Yellow
+    }
+    elseif ($webAdminGroup)
+    {
+        Write-Host "Group '$WebUiAdminGroup' already exists." -ForegroundColor Green
+    }
+}
+
+#endregion 4b. Web UI admin group
 
 #region 5/6. gMSA
 

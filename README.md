@@ -116,7 +116,7 @@ OfflineJoinService/
 | [README.md](README.md) | Doku | Diese Uebersicht (Deutsch): Problem, Loesung, Architektur, Einrichtung. |
 | [docs/README.md](docs/README.md) | Doku-Index | Inhaltsverzeichnis der `docs/`-Dokumente (Sprache + Inhalt). |
 | [src/README.md](src/README.md) | Quellcode-Index | Inhaltsverzeichnis des `src/`-Quellcodes (Modul + Webdienst). |
-| [install.ps1](install.ps1) | Installer | Automatisierter, wiederholbarer 9-Stufen-Installer (Voraussetzungen, Pode, KDS-Key, Hosts-Gruppe, gMSA, OU-Delegierung, Konfiguration, Dienstregistrierung). Optionen `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`, `-EnableEventLog`, `-EventLogName`, `-EventLogSource`. |
+| [install.ps1](install.ps1) | Installer | Automatisierter, wiederholbarer 9-Stufen-Installer (Voraussetzungen, Pode, KDS-Key, Hosts-Gruppe, gMSA, OU-Delegierung, Konfiguration, Dienstregistrierung). Optionen `-EnableWebUi`, `-WebUiAdminGroup`, `-CreateWebUiAdminGroup`, `-WebUiBasePath`, `-EnableEventLog`, `-EventLogName`, `-EventLogSource`. |
 | [docs/README.en.md](docs/README.en.md) | Doku | Englische Fassung dieser Uebersicht. |
 | [docs/loesungsvarianten.md](docs/loesungsvarianten.md) | Doku | Variantenvergleich (CredSSP/KCD/RBCD/ODJ/Webdienst) + Double-Hop-Analyse (Deutsch). |
 | [docs/solution-variants.md](docs/solution-variants.md) | Doku | Englische Fassung des Variantenvergleichs. |

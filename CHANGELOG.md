@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-22
+
+### Added
+
+- `install.ps1` gains a `-CreateWebUiAdminGroup` switch (stage 4b) that creates
+  the `WebUiAdminGroup` (default `GG-ODJ-WebAdmins`) as a global security group
+  in the service host's domain when it does not exist, mirroring the existing
+  `-CreateHostsGroup` behaviour. No members are added automatically; the
+  authorised administrators must be added with `Add-ADGroupMember`.
+- Documentation: a two-forest lab **dry-run** walkthrough (self-signed
+  certificate, web service + web UI, API key, `-WhatIf`) in
+  `docs/schnellstart.md` and `docs/quickstart.md`.
+
 ## [1.4.0] - 2026-07-22
 
 ### Added
@@ -144,7 +157,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.1...v1.2.0

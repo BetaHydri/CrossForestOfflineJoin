@@ -117,7 +117,7 @@ OfflineJoinService/
 | [README.md](../README.md) | Docs | German overview: problem, solution, architecture, setup. |
 | [docs/README.md](README.md) | Docs index | Table of contents for the `docs/` documents (language + content). |
 | [src/README.md](../src/README.md) | Source index | Table of contents for the `src/` source (module + web service). |
-| [install.ps1](../install.ps1) | Installer | Automated, re-runnable 9-stage installer (prerequisites, Pode, KDS key, hosts group, gMSA, OU delegation, config, service registration). Options `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`, `-EnableEventLog`, `-EventLogName`, `-EventLogSource`. |
+| [install.ps1](../install.ps1) | Installer | Automated, re-runnable 9-stage installer (prerequisites, Pode, KDS key, hosts group, gMSA, OU delegation, config, service registration). Options `-EnableWebUi`, `-WebUiAdminGroup`, `-CreateWebUiAdminGroup`, `-WebUiBasePath`, `-EnableEventLog`, `-EventLogName`, `-EventLogSource`. |
 | [docs/README.en.md](README.en.md) | Docs | This English overview. |
 | [docs/loesungsvarianten.md](loesungsvarianten.md) | Docs | Variant comparison (CredSSP/KCD/RBCD/ODJ/web service) + double-hop analysis (German). |
 | [docs/solution-variants.md](solution-variants.md) | Docs | English version of the variant comparison. |
