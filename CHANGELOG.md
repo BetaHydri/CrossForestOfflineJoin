@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-22
+
+### Added
+
+- Documentation: explanation of the `Pode` module as a prerequisite (what it is
+  and why no IIS is required) in both quick-start guides.
+- Documentation: full `appsettings.psd1` configuration reference table and a
+  guide for targeting multiple OUs in the same destination domain via distinct
+  name prefixes, in both quick-start guides.
+- Documentation: IIS hosting alternative (IIS as a reverse proxy in front of
+  Pode, and a native IIS application under the gMSA) in both quick-start guides,
+  with a pointer from both READMEs.
+
 ## [1.0.0] - 2026-07-22
 
 ### Added
@@ -33,5 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/releases/tag/v1.0.0

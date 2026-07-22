@@ -123,6 +123,10 @@ OfflineJoinService/
 
 > Fuer eine vollstaendige, schrittweise Anleitung inklusive aller
 > Voraussetzungen siehe den Schnellstart: [docs/schnellstart.md](docs/schnellstart.md).
+>
+> Hosting-Hinweis: Pode hostet HTTPS selbst — **IIS ist nicht erforderlich**.
+> Wer IIS bevorzugt, kann es als Reverse Proxy vor Pode betreiben; siehe
+> [Hosting-Alternative: Windows Server mit IIS](docs/schnellstart.md#hosting-alternative-windows-server-mit-iis).
 
 ### 1. gMSA im Admin-AD-Forest anlegen
 

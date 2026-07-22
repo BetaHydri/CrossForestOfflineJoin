@@ -1,6 +1,6 @@
 @{
     RootModule        = 'OfflineJoin.psm1'
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.1.0'
     GUID              = 'b6f4d3a1-7c2e-4e9b-9a1f-5d3c8e2a1b90'
     Author            = 'Jan Tiedemann'
     CompanyName       = 'Internal'

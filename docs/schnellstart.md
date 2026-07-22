@@ -40,6 +40,16 @@ Ziel-VM in mehrere Ressourcen-Forests aufgenommen.
   Install-Module Pode -Scope AllUsers
   ```
 
+  [Pode](https://badgerati.github.io/Pode/) ist ein plattformuebergreifendes
+  Webserver-Framework in reinem PowerShell. Dieses Projekt nutzt es, um den
+  REST-Endpunkt `POST /api/v1/provision` bereitzustellen — inklusive
+  HTTPS/TLS-Listener, der `X-Api-Key`-Header-Authentifizierung, dem
+  Request-Routing und den JSON-Antworten — dadurch werden weder IIS noch ein
+  externer Webserver benoetigt. Pode wird ueber die PowerShell Gallery verteilt;
+  die Installation mit `-Scope AllUsers` macht es der gMSA-Dienstidentitaet
+  verfuegbar (dafuer ist eine PowerShell-Sitzung mit erhoehten Rechten
+  erforderlich).
+
 - Ein **Server-TLS-Zertifikat** im Speicher `LocalMachine\My` (fuer HTTPS).
   Thumbprint notieren.
 - Rechte zum **Erstellen von Dienstkonten** im Admin-AD-Forest und zum **Setzen
@@ -84,20 +94,83 @@ Schritt fuer jeden weiteren Ressourcen-Forest wiederholen.
 
 ## 5. Webdienst konfigurieren
 
-`src/WebService/appsettings.psd1` anpassen:
+Der Dienst liest alle Einstellungen aus `src/WebService/appsettings.psd1`
+(eine PowerShell-Datendatei). Standardmaessig wird die Datei neben
+`Start-OfflineJoinService.ps1` verwendet; mit `-ConfigPath` kann eine andere
+Datei uebergeben werden. Nach einer Aenderung den Dienst neu starten.
 
-- `Endpoint.CertificateThumbprint`: Thumbprint des TLS-Zertifikats.
-- `ApiClients[].ApiKeySha256`: SHA256-Hash des API-Schluessels (nicht der
-  Klartext). Hash erzeugen mit:
+> Tipp: Geheimnisse und umgebungsspezifische Werte aus der Versionsverwaltung
+> heraushalten, indem die Datei nach `appsettings.local.psd1` kopiert wird
+> (bereits git-ignoriert) und der Dienst mit
+> `-ConfigPath .\appsettings.local.psd1` gestartet wird.
 
-  ```powershell
-  [BitConverter]::ToString(
-    [System.Security.Cryptography.SHA256]::Create().ComputeHash(
-      [Text.Encoding]::UTF8.GetBytes('MEIN-API-KEY'))).Replace('-','').ToLower()
-  ```
+### Konfigurationsreferenz
 
-- `AllowedTargets`: Positivliste der erlaubten Kombinationen aus Domain, Ziel-OU
-  und Namenspraefix.
+| Einstellung | Bedeutung | Hinweise |
+| --- | --- | --- |
+| `Endpoint.Address` | Lauschadresse des HTTPS-Listeners. | `'*'` = alle Schnittstellen; oder eine bestimmte IP/Hostname. |
+| `Endpoint.Port` | TCP-Port fuer HTTPS. | Standard `8443`. In der Firewall freigeben. |
+| `Endpoint.CertificateThumbprint` | Thumbprint des TLS-Serverzertifikats. | Zertifikat muss in `LocalMachine\My` liegen. |
+| `ApiClients[]` | Liste zugelassener API-Aufrufer. | Ein Eintrag je Anforderer (z. B. je Automatisierungssystem). |
+| `ApiClients[].Name` | Anzeigename des Aufrufers. | Erscheint im Audit-Log. |
+| `ApiClients[].ApiKeySha256` | SHA256-Hash des API-Schluessels des Aufrufers. | Niemals den Klartext-Schluessel speichern. |
+| `AllowedTargets[]` | Positivliste der erlaubten Provisionierungsziele. | Siehe unten — steuert Domain, OU und Namenspraefix. |
+| `AllowedTargets[].Domain` | FQDN der Zieldomaene. | Muss zum Feld `domain` der Anfrage passen. |
+| `AllowedTargets[].MachineOU` | Distinguished Name der OU, in der das Computerobjekt angelegt wird. | Die gMSA muss auf dieser OU delegiert sein (Schritt 4). |
+| `AllowedTargets[].NamePrefix` | Erforderliches Praefix des Computernamens. | Eine Anfrage ist nur erlaubt, wenn `machineName` mit diesem Praefix beginnt. |
+| `AuditLogPath` | Pfad der Audit-Log-Datei. | Das Verzeichnis wird automatisch erstellt. Es werden keine Blob-/Geheimnisinhalte protokolliert. |
+
+### API-Schlussel-Hash
+
+`ApiClients[].ApiKeySha256` enthaelt den SHA256-Hash des API-Schluessels, nicht
+den Klartext. Hash erzeugen mit:
+
+```powershell
+[BitConverter]::ToString(
+  [System.Security.Cryptography.SHA256]::Create().ComputeHash(
+    [Text.Encoding]::UTF8.GetBytes('MEIN-API-KEY'))).Replace('-','').ToLower()
+```
+
+Weitere Aufrufer hinzufuegen, indem weitere Eintraege zu `ApiClients`
+hinzugefuegt werden — jeder mit eigenem `Name` und `ApiKeySha256`.
+
+### Mehrere OUs in derselben Zieldomaene ansprechen
+
+Ja — eine Zieldomaene kann **mehrere Ziel-OUs** verwenden. Jeder
+`AllowedTargets`-Eintrag ordnet ein **Namenspraefix** genau einer **OU** zu.
+Um Computer in verschiedene OUs derselben Domaene zu leiten, je OU einen
+Eintrag hinzufuegen und diese ueber `NamePrefix` unterscheiden. Der Dienst
+nimmt den **ersten** Eintrag, dessen `Domain` passt und dessen `NamePrefix` ein
+Praefix des angefragten `machineName` ist.
+
+```powershell
+AllowedTargets = @(
+    # res-a.example.com -> Webserver in die Web-OU
+    @{
+        Domain     = 'res-a.example.com'
+        MachineOU  = 'OU=Web,OU=Server,DC=res-a,DC=example,DC=com'
+        NamePrefix = 'RESA-WEB'
+    }
+    # res-a.example.com -> Datenbankserver in die DB-OU
+    @{
+        Domain     = 'res-a.example.com'
+        MachineOU  = 'OU=DB,OU=Server,DC=res-a,DC=example,DC=com'
+        NamePrefix = 'RESA-DB'
+    }
+    # res-b.example.com -> einzelne OU
+    @{
+        Domain     = 'res-b.example.com'
+        MachineOU  = 'OU=Server,DC=res-b,DC=example,DC=com'
+        NamePrefix = 'RESB'
+    }
+)
+```
+
+Mit dem Beispiel oben landet `RESA-WEB01` in der Web-OU und `RESA-DB01` in der
+DB-OU von `res-a.example.com`. Die gMSA auf **jeder** aufgelisteten OU
+delegieren (Schritt 4 je OU wiederholen). **Eindeutige, ueberschneidungsfreie
+Praefixe** verwenden — da der erste Treffer gewinnt, wuerde ein breites Praefix
+wie `RESA` spezifischere wie `RESA-DB` verdecken.
 
 ## 6. Webdienst starten
 
@@ -155,9 +228,91 @@ Schritte 1 bis 4 (gMSA + Delegierung) sind weiterhin die Grundlage:
     -OutputFormat Blob
 ```
 
-## See Also
+## Hosting-Alternative: Windows Server mit IIS
 
-- [README](../README.md)
-- [quickstart.md](quickstart.md) (English)
-- [loesungsvarianten.md](loesungsvarianten.md)
-- [Microsoft Learn: Offline Domain Join (djoin)](https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/offline-domain-join--djoin--step-by-step)
+Da Pode ein selbst-hostender Webserver ist, wird **kein IIS benoetigt** — der
+Dienst lauscht selbst auf HTTPS. Wenn im Unternehmen auf IIS standardisiert wird
+(zentrale Zertifikatsverwaltung, vorhandenes Logging/WAF/Load-Balancing, Port
+443), kann IIS vor Pode geschaltet oder an dessen Stelle verwendet werden. In
+jedem Fall laeuft die Provisionierungslogik (`djoin` unter der gMSA) weiterhin
+in PowerShell.
+
+### Variante A — IIS als Reverse Proxy vor Pode (empfohlen)
+
+IIS terminiert TLS mit dem Unternehmenszertifikat und leitet Anfragen an den
+auf `localhost` gebundenen Pode-Listener weiter. Der Pode-Dienst laeuft
+weiterhin als Windows-Dienst unter der gMSA (Schritte 2–6), somit sind **keine
+Code-Aenderungen** noetig.
+
+```text
+VMware --HTTPS 443--> IIS (Reverse Proxy, TLS) --HTTP 127.0.0.1:8080--> Pode (gMSA)
+```
+
+1. Die IIS-Erweiterungen **URL Rewrite** und **Application Request Routing
+   (ARR)** installieren, dann den Proxy aktivieren: IIS-Manager -> Serverknoten
+   -> *Application Request Routing Cache* -> *Server Proxy Settings* ->
+   **Enable proxy** aktivieren.
+2. Pode nur an Loopback-HTTP binden (`appsettings.psd1` anpassen):
+
+   ```powershell
+   Endpoint = @{
+       Address = '127.0.0.1'
+       Port    = 8080
+       # Protokoll uebernimmt jetzt IIS; Thumbprint leer lassen oder den
+       # Endpunkt in Start-OfflineJoinService.ps1 auf HTTP umstellen.
+   }
+   ```
+
+   > Da Pode nur noch auf Loopback lauscht, uebernimmt IIS das TLS. Den
+   > Pode-Port per Firewallregel absichern, damit er aus dem Netz nicht
+   > erreichbar ist.
+3. Eine IIS-Site mit einer **https-Bindung auf 443** und dem
+   Unternehmenszertifikat anlegen.
+4. Eine **URL-Rewrite**-Regel hinzufuegen, die alles an Pode weiterleitet
+   (`web.config` im Site-Stammverzeichnis):
+
+   ```xml
+   <configuration>
+     <system.webServer>
+       <rewrite>
+         <rules>
+           <rule name="ProxyToPode" stopProcessing="true">
+             <match url="(.*)" />
+             <action type="Rewrite" url="http://127.0.0.1:8080/{R:1}" />
+           </rule>
+         </rules>
+       </rewrite>
+     </system.webServer>
+   </configuration>
+   ```
+
+   Der `X-Api-Key`-Header bleibt beim Proxying erhalten, die Authentifizierung
+   funktioniert also unveraendert.
+5. Optional Logging/WAF an IIS auslagern. Die gMSA-Delegierung verbleibt
+   vollstaendig auf dem Pode-Dienst — IIS proxyt nur und beruehrt AD nie.
+
+### Variante B — Native IIS-Anwendung unter der gMSA (ohne Pode)
+
+IIS-Anwendungspools koennen **direkt unter einer gMSA**-Identitaet laufen
+(`DOMAIN\gmsa$`, Kennwort leer lassen, *Benutzerprofil laden* nach Bedarf) und
+liefern so die delegierte Identitaet fuer `djoin` ohne Pode. IIS kann das
+mitgelieferte Pode-Skript jedoch nicht direkt ausfuehren; der Endpunkt wuerde
+als echte Web-App gehostet — z. B. als ASP.NET-Core-App oder ein
+PowerShell-in-IIS-Host wie
+[PowerShell Universal](https://ironmansoftware.com/powershell-universal) — die
+dieselben `OfflineJoin`-Modulfunktionen aufruft (`New-OfflineDomainJoinBlob`,
+`ConvertTo-OdjUnattendXml`).
+
+Das ist ein groesserer Aufwand, weil Request-Verarbeitung, API-Key-Pruefung,
+Positivliste und Audit-Log derzeit im Pode-Skript liegen und im gewaehlten
+Framework neu umgesetzt werden muessten. Fuer die meisten Umgebungen ist
+**Variante A** einfacher und nutzt den mitgelieferten Code unveraendert.
+
+| | Variante A (Reverse Proxy) | Variante B (natives IIS) |
+| --- | --- | --- |
+| Code-Aenderungen | Keine (nur Konfiguration) | Endpunkt neu umsetzen |
+| gMSA-Identitaet | Auf dem Pode-Windows-Dienst | IIS-Anwendungspool-Identitaet |
+| TLS / Zertifikatsverwaltung | IIS | IIS |
+| Aufwand | Gering | Hoch |
+
+## See Also
