@@ -60,6 +60,15 @@
         @{ Domain = 'res-a.example.com'; MachineOU = 'OU=Server,DC=res-a,DC=example,DC=com'; NamePrefix = 'RESA' }
     Used to build AllowedTargets and (with -SetOuDelegation) to delegate OUs.
 
+    For OU delegation across a child or foreign domain, an entry may also carry
+    two optional keys that are forwarded to Set-CrossForestOuDelegation.ps1:
+        Server     = 'dc1.res-a.example.com'   # a DC of the target domain
+        Credential = $resACred                 # PSCredential with write rights
+    They avoid the "A referral was returned from the server." error that occurs
+    when delegating an OU that lives in a domain other than the service host's.
+    These keys are ignored when building AllowedTargets (only Domain, MachineOU
+    and NamePrefix are written to the configuration).
+
 .PARAMETER SetOuDelegation
     Run scripts/Set-CrossForestOuDelegation.ps1 for every -Target. The gMSA
     (Admin-AD\<GmsaName>$) is delegated the minimal rights on each MachineOU.
@@ -513,8 +522,39 @@ if ($SetOuDelegation)
     {
         Test-TargetEntry -Entry $t
         Write-Stage "Delegating OU '$($t.MachineOU)' to '$trustee'"
-        Write-Warning "OU delegation must run with rights in the resource forest of '$($t.Domain)' (forest trust + name resolution required). If this host cannot write that OU, run scripts/Set-CrossForestOuDelegation.ps1 from within that forest instead."
-        & $delegationScript -TargetOU $t.MachineOU -TrusteeSamAccountName $trustee
+
+        $delegationArgs = @{
+            TargetOU              = $t.MachineOU
+            TrusteeSamAccountName = $trustee
+        }
+        if ($t.ContainsKey('Server') -and -not [string]::IsNullOrWhiteSpace([string]$t['Server']))
+        {
+            $delegationArgs['Server'] = [string]$t['Server']
+        }
+        if ($t.ContainsKey('Credential') -and $t['Credential'])
+        {
+            $delegationArgs['Credential'] = $t['Credential']
+        }
+
+        if ($delegationArgs.ContainsKey('Server') -or $delegationArgs.ContainsKey('Credential'))
+        {
+            $via = @()
+            if ($delegationArgs.ContainsKey('Server'))
+            {
+                $via += "server '$($delegationArgs['Server'])'"
+            }
+            if ($delegationArgs.ContainsKey('Credential'))
+            {
+                $via += "as '$($delegationArgs['Credential'].UserName)'"
+            }
+            Write-Host "  Targeting '$($t.Domain)' via $($via -join ', ')." -ForegroundColor DarkGray
+        }
+        else
+        {
+            Write-Warning "OU delegation must run with rights in the resource forest of '$($t.Domain)' (forest trust + name resolution required). If this host cannot write that OU, add Server/Credential to the -Target entry or run scripts/Set-CrossForestOuDelegation.ps1 from within that forest instead."
+        }
+
+        & $delegationScript @delegationArgs
     }
 }
 

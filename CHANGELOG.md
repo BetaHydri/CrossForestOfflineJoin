@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-22
+
+### Added
+
+- `scripts/Set-CrossForestOuDelegation.ps1` gains optional `-Server` and
+  `-Credential` parameters so the OU delegation can be applied remotely from the
+  Admin-AD host against a child domain or a foreign forest. Each `-Target` entry
+  in `install.ps1` may likewise carry optional `Server` and `Credential` keys,
+  which are forwarded to the delegation script (and ignored when building
+  `AllowedTargets`).
+- Documentation: the two-forest lab dry-run walkthrough now shows per-domain
+  `Server`/`Credential` on the delegation targets in `docs/schnellstart.md` and
+  `docs/quickstart.md`.
+
+### Changed
+
+- `scripts/Set-CrossForestOuDelegation.ps1` now binds to the target OU through a
+  domain-targeted LDAP `DirectoryEntry` instead of the domain-bound `AD:` drive.
+  The `AD:` drive resolves only the local host's own domain and raised
+  "A referral was returned from the server." for a DistinguishedName in a
+  different (child or foreign) domain; the LDAP binding follows the referral
+  when a `-Server` of the target domain is supplied.
+
 ## [1.5.0] - 2026-07-22
 
 ### Added
@@ -157,7 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.2.0...v1.3.0

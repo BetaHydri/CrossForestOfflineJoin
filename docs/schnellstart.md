@@ -298,6 +298,25 @@ $key = Read-Host -AsSecureString 'API-Key fuer den ersten Client'
 Nur der SHA256-Hash des Keys wird in die Konfiguration geschrieben; der Klartext
 wird nie gespeichert.
 
+### 2b. Domaenen-Admin-Credentials je Ziel-Domaene erfassen
+
+Die OU-Delegierung (Stufe 7) schreibt in die `OU=Server` der jeweiligen
+Ziel-Domaene. Weil diese OUs in **anderen** Domaenen als der forest1.net-Host
+liegen, wird pro Ziel ein Domain Controller (`Server`) plus passende
+`Credential` mitgegeben. Damit laeuft die Delegierung remote vom forest1.net-Host
+aus, ohne den Fehler "A referral was returned from the server.".
+
+```powershell
+$credChild1  = Get-Credential 'CHILD\Administrator'    # child.forest1.net
+$credForest2 = Get-Credential 'FOREST2\Administrator'  # forest2.net
+$credChild2  = Get-Credential 'CHILD2\Administrator'   # child.forest2.net
+```
+
+> Die NetBIOS-Namen (`CHILD`, `FOREST2`, `CHILD2`) an deine Lab-Domaenen
+> anpassen. Der Trustee (die gMSA aus `forest1.net`) wird weiterhin ueber den
+> Trust aufgeloest; die Credentials gelten nur fuer das ACL-Schreiben in der
+> jeweiligen Ziel-Domaene.
+
 ### 3. Trockenlauf der Installation (-WhatIf)
 
 ```powershell
@@ -307,9 +326,9 @@ wird nie gespeichert.
     -HostsGroupName 'GG-ODJ-Hosts' -CreateHostsGroup -CreateKdsRootKey -InstallPode `
     -CertificateThumbprint $thumb `
     -ApiClientName 'lab-test-client' -ApiKey $key `
-    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1' }, `
-            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2' }, `
-            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2' } `
+    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1'; Server='dc1.child.forest1.net'; Credential=$credChild1 }, `
+            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2'; Server='dc1.forest2.net';       Credential=$credForest2 }, `
+            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2'; Server='dc1.child.forest2.net'; Credential=$credChild2 } `
     -SetOuDelegation `
     -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -CreateWebUiAdminGroup -WebUiBasePath '/ui' `
     -EnableEventLog `
@@ -322,13 +341,19 @@ Hinweise:
   denselben Aufruf **ohne** `-WhatIf` erneut ausfuehren.
 - Die `NamePrefix`-Werte (`C1`, `F2`, `C2`) sind frei waehlbar und begrenzen die
   erlaubten Computernamen je Ziel.
-- `child.forest1.net` ist eine Kind-Domaene im selben Forest und braucht keinen
-  Trust; `forest2.net` und `child.forest2.net` werden ueber den bestehenden
-  Forest-Trust erreicht.
-- Die OU-Delegierung (`-SetOuDelegation`, Stufe 7) muss gegen **jeden**
-  Ressourcen-Forest laufen und dort Schreibrechte auf der jeweiligen `OU=Server`
-  haben. Ist das vom forest1.net-Host aus nicht moeglich, fuehre
-  `scripts/Set-CrossForestOuDelegation.ps1` separat im jeweiligen Forest aus.
+- `Server`/`Credential` sind pro Ziel **optional**. `child.forest1.net` ist eine
+  Kind-Domaene im selben Forest; `forest2.net` und `child.forest2.net` werden
+  ueber den bestehenden Forest-Trust erreicht. In allen drei Faellen liegt die
+  Ziel-OU in einer anderen Domaene als der forest1.net-Host, daher werden je
+  `Server` (ein DC der Ziel-Domaene) und `Credential` mitgegeben.
+- `Server`/`Credential` werden nur an `Set-CrossForestOuDelegation.ps1`
+  weitergereicht; in die Konfiguration (`AllowedTargets`) fliessen nur `Domain`,
+  `MachineOU` und `NamePrefix`.
+- Ohne `Server`/`Credential` muss die OU-Delegierung (`-SetOuDelegation`,
+  Stufe 7) mit Schreibrechten in der jeweiligen Ziel-Domaene laufen. Ist das vom
+  forest1.net-Host aus nicht moeglich, fuehre
+  `scripts/Set-CrossForestOuDelegation.ps1` separat auf einem DC der jeweiligen
+  Domaene aus.
 - Nur die Konfiguration testen (ohne AD-Stufen): denselben Aufruf ohne
   `-GmsaName`, `-CreateHostsGroup`, `-CreateKdsRootKey`, `-SetOuDelegation` und
   `-CreateWebUiAdminGroup` verwenden.

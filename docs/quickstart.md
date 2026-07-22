@@ -287,6 +287,24 @@ $key = Read-Host -AsSecureString 'API key for the first client'
 Only the SHA256 hash of the key is written to the configuration; the clear text
 is never stored.
 
+### 2b. Collect a domain-admin credential per target domain
+
+OU delegation (stage 7) writes to the `OU=Server` of each target domain. Because
+those OUs live in domains **other** than the forest1.net host, each target is
+given a domain controller (`Server`) plus a matching `Credential`. This lets the
+delegation run remotely from the forest1.net host without the
+"A referral was returned from the server." error.
+
+```powershell
+$credChild1  = Get-Credential 'CHILD\Administrator'    # child.forest1.net
+$credForest2 = Get-Credential 'FOREST2\Administrator'  # forest2.net
+$credChild2  = Get-Credential 'CHILD2\Administrator'   # child.forest2.net
+```
+
+> Adjust the NetBIOS names (`CHILD`, `FOREST2`, `CHILD2`) to your lab domains.
+> The trustee (the gMSA from `forest1.net`) is still resolved through the trust;
+> the credentials only apply to the ACL write in the respective target domain.
+
 ### 3. Dry run of the installation (-WhatIf)
 
 ```powershell
@@ -296,9 +314,9 @@ is never stored.
     -HostsGroupName 'GG-ODJ-Hosts' -CreateHostsGroup -CreateKdsRootKey -InstallPode `
     -CertificateThumbprint $thumb `
     -ApiClientName 'lab-test-client' -ApiKey $key `
-    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1' }, `
-            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2' }, `
-            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2' } `
+    -Target @{ Domain='child.forest1.net'; MachineOU='OU=Server,DC=child,DC=forest1,DC=net'; NamePrefix='C1'; Server='dc1.child.forest1.net'; Credential=$credChild1 }, `
+            @{ Domain='forest2.net';       MachineOU='OU=Server,DC=forest2,DC=net';           NamePrefix='F2'; Server='dc1.forest2.net';       Credential=$credForest2 }, `
+            @{ Domain='child.forest2.net'; MachineOU='OU=Server,DC=child,DC=forest2,DC=net'; NamePrefix='C2'; Server='dc1.child.forest2.net'; Credential=$credChild2 } `
     -SetOuDelegation `
     -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins' -CreateWebUiAdminGroup -WebUiBasePath '/ui' `
     -EnableEventLog `
@@ -311,13 +329,18 @@ Notes:
   same command again **without** `-WhatIf`.
 - The `NamePrefix` values (`C1`, `F2`, `C2`) are free to choose and constrain the
   allowed computer names per target.
-- `child.forest1.net` is a child domain in the same forest and needs no trust;
-  `forest2.net` and `child.forest2.net` are reached via the existing forest
-  trust.
-- OU delegation (`-SetOuDelegation`, stage 7) must run against **each** resource
-  forest and requires write rights on that `OU=Server`. If this is not possible
+- `Server`/`Credential` are **optional** per target. `child.forest1.net` is a
+  child domain in the same forest; `forest2.net` and `child.forest2.net` are
+  reached via the existing forest trust. In all three cases the target OU lives
+  in a domain other than the forest1.net host, so each is given a `Server` (a DC
+  of the target domain) and a `Credential`.
+- `Server`/`Credential` are only forwarded to
+  `scripts/Set-CrossForestOuDelegation.ps1`; only `Domain`, `MachineOU` and
+  `NamePrefix` flow into the configuration (`AllowedTargets`).
+- Without `Server`/`Credential`, OU delegation (`-SetOuDelegation`, stage 7) must
+  run with write rights in the respective target domain. If this is not possible
   from the forest1.net host, run `scripts/Set-CrossForestOuDelegation.ps1`
-  separately from within each forest.
+  separately on a DC of the respective domain.
 - To test only the configuration (without the AD stages), use the same command
   without `-GmsaName`, `-CreateHostsGroup`, `-CreateKdsRootKey`,
   `-SetOuDelegation` and `-CreateWebUiAdminGroup`.

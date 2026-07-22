@@ -21,14 +21,40 @@
 
     Least privilege: only the target OU is delegated, not the whole domain.
 
+    The script binds to the target OU via a domain-targeted LDAP path
+    (DirectoryEntry) rather than the AD: PowerShell drive. The AD: drive is
+    bound to the local host's own domain and returns "A referral was returned
+    from the server." for a DistinguishedName in a different (child or foreign)
+    domain. With -Server (a DC of the target domain) and optional -Credential
+    the delegation can therefore be applied remotely from the Admin-AD host.
+
 .PARAMETER TargetOU
     DistinguishedName of the target OU in the resource forest.
 
 .PARAMETER TrusteeSamAccountName
     Foreign identity in the format 'ADMIN-AD\gmsa-odjsvc$'.
 
+.PARAMETER Server
+    Optional DNS name (or FQDN) of a domain controller of the TARGET domain.
+    Required when the target OU lives in a different domain than the host this
+    script runs on (child domain or foreign forest); otherwise the AD referral
+    cannot be followed. If omitted, the caller's default domain is used.
+
+.PARAMETER Credential
+    Optional credentials with write rights on the target OU (e.g. the domain
+    administrator of the resource domain). Use this to apply the delegation
+    remotely from the Admin-AD host against a child or foreign domain.
+
 .EXAMPLE
     .\Set-CrossForestOuDelegation.ps1 -TargetOU 'OU=Server,DC=res-a,DC=example,DC=com' -TrusteeSamAccountName 'ADMIN-AD\gmsa-odjsvc$'
+
+.EXAMPLE
+    # Remote delegation from the Admin-AD host against a foreign domain:
+    $cred = Get-Credential 'RES-A\Administrator'
+    .\Set-CrossForestOuDelegation.ps1 `
+        -TargetOU 'OU=Server,DC=res-a,DC=example,DC=com' `
+        -TrusteeSamAccountName 'ADMIN-AD\gmsa-odjsvc$' `
+        -Server 'dc1.res-a.example.com' -Credential $cred
 
 .NOTES
     Author: Jan Tiedemann
@@ -44,7 +70,16 @@ param
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
     [string]
-    $TrusteeSamAccountName
+    $TrusteeSamAccountName,
+
+    [Parameter()]
+    [string]
+    $Server,
+
+    [Parameter()]
+    [System.Management.Automation.PSCredential]
+    [System.Management.Automation.Credential()]
+    $Credential = [System.Management.Automation.PSCredential]::Empty
 )
 
 Set-StrictMode -Version Latest
@@ -59,13 +94,44 @@ $guidAllProperties = [guid]'00000000-0000-0000-0000-000000000000' # all
 $account = New-Object System.Security.Principal.NTAccount($TrusteeSamAccountName)
 $sid = $account.Translate([System.Security.Principal.SecurityIdentifier])
 
-$ouPath = "AD:\$TargetOU"
-if (-not (Test-Path -LiteralPath $ouPath))
+# Build a domain-targeted LDAP path so cross-domain / cross-forest OUs resolve
+# without the AD: drive's "A referral was returned from the server." error.
+if ($Server)
 {
-    throw "Target OU '$TargetOU' was not found."
+    $ldapPath = "LDAP://$Server/$TargetOU"
+}
+else
+{
+    $ldapPath = "LDAP://$TargetOU"
 }
 
-$acl = Get-Acl -Path $ouPath
+try
+{
+    if ($Credential -and $Credential -ne [System.Management.Automation.PSCredential]::Empty)
+    {
+        $entry = New-Object System.DirectoryServices.DirectoryEntry(
+            $ldapPath,
+            $Credential.UserName,
+            $Credential.GetNetworkCredential().Password,
+            [System.DirectoryServices.AuthenticationTypes]::Secure
+        )
+    }
+    else
+    {
+        $entry = New-Object System.DirectoryServices.DirectoryEntry($ldapPath)
+    }
+
+    # Only the DACL is required; requesting it also forces the bind so a missing
+    # OU or a failed authentication surfaces here rather than at commit time.
+    $entry.Options.SecurityMasks = [System.DirectoryServices.SecurityMasks]::Dacl
+    $null = $entry.Guid
+}
+catch
+{
+    throw "Target OU '$TargetOU' could not be bound (path '$ldapPath'): $($_.Exception.Message)"
+}
+
+$acl = $entry.ObjectSecurity
 
 # 1) Create/Delete computer child on the OU itself.
 $aceCreate = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
@@ -103,6 +169,7 @@ $acl.AddAccessRule($aceWrite)
 
 if ($PSCmdlet.ShouldProcess($TargetOU, "Set delegation for '$TrusteeSamAccountName'"))
 {
-    Set-Acl -Path $ouPath -AclObject $acl
+    $entry.ObjectSecurity = $acl
+    $entry.CommitChanges()
     Write-Host "Delegation for '$TrusteeSamAccountName' set on '$TargetOU'." -ForegroundColor Green
 }
