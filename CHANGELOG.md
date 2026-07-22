@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.7] - 2026-07-22
+
+### Fixed
+
+- `src/WebService/Start-OfflineJoinService.ps1`: standalone `WindowsAd` mode
+  showed no login form and returned HTTP 500 (`Cannot bind argument to
+  parameter 'User' because it is an empty string`). The protected `/ui` routes
+  were incorrectly flagged with `-Login`, which in Pode allows anonymous GET so
+  a route can render a sign-in page - so `/ui` ran with no authenticated user
+  (`$WebEvent.Auth.User` empty) and crashed before redirecting to the login
+  page. The `-Login` flag now applies only to the dedicated `/ui/login` routes;
+  the protected routes keep plain authentication and redirect unauthenticated
+  visitors to the login form.
+
 ## [1.6.6] - 2026-07-22
 
 ### Fixed

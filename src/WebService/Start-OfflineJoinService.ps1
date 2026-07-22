@@ -360,7 +360,13 @@ Start-PodeServer {
                 Add-PodeAuthWindowsAd -Name 'WebUiAuth' -Groups @($config.WebUi.AdminGroup) `
                     -FailureUrl "$uiBasePath/login?failed=1" -SuccessUrl $uiBasePath
 
-            $uiRouteAuth.Login = $true
+            # NOTE: the protected UI routes must NOT be flagged with -Login.
+            # A Pode -Login route allows anonymous GET so it can render a sign-in
+            # page; applying it to the real /ui route would run that handler with
+            # no authenticated user ($WebEvent.Auth.User empty) and crash. The
+            # protected routes therefore keep plain Authentication, so an
+            # unauthenticated visitor is redirected to the FailureUrl (the login
+            # page). Only the dedicated /ui/login routes below carry -Login.
 
             # Login page (GET renders the form; POST validates the credentials).
             Add-PodeRoute -Method Get -Path "$uiBasePath/login" -Authentication 'WebUiAuth' -Login -ScriptBlock {
