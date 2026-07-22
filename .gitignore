@@ -17,3 +17,6 @@ Thumbs.db
 desktop.ini
 *.tmp
 odj_*.tmp
+
+# Local agent Memory Bank (not version-controlled)
+.memory-bank/
