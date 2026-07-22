@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-07-22
+
+### Fixed
+
+- `scripts/Set-CrossForestOuDelegation.ps1`: the combined `CreateChild -bor
+  DeleteChild` right in the first ACE was parsed as `($sid, CreateChild) -bor
+  DeleteChild` because the comma bound tighter than `-bor`, so the constructor
+  argument became an `[Object[]]` and threw "Method invocation failed because
+  [System.Object[]] does not contain a method named 'op_BitwiseOr'." once the
+  delegation actually ran. Wrapped the `-bor` expression in parentheses. (This
+  line was never reached before v1.6.2 because the bind failed first.)
+
 ## [1.6.2] - 2026-07-22
 
 ### Changed
@@ -204,7 +216,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.3...HEAD
+[1.6.3]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...v1.6.0

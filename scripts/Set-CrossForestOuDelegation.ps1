@@ -123,7 +123,7 @@ $acl = $adObject.nTSecurityDescriptor
 # 1) Create/Delete computer child on the OU itself.
 $aceCreate = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
     $sid,
-    [System.DirectoryServices.ActiveDirectoryRights]::CreateChild -bor [System.DirectoryServices.ActiveDirectoryRights]::DeleteChild,
+    ([System.DirectoryServices.ActiveDirectoryRights]::CreateChild -bor [System.DirectoryServices.ActiveDirectoryRights]::DeleteChild),
     [System.Security.AccessControl.AccessControlType]::Allow,
     $guidComputerClass,
     [System.DirectoryServices.ActiveDirectorySecurityInheritance]::All
