@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-07-22
+
+### Changed
+
+- `scripts/Set-CrossForestOuDelegation.ps1` now reads and writes the target OU's
+  security descriptor with the ActiveDirectory module (`Get-ADObject` /
+  `Set-ADObject -Replace @{ nTSecurityDescriptor = ... }`) instead of a raw
+  `DirectoryEntry`. `DirectoryEntry.Options` stayed `$null` after binding in the
+  cross-domain/credentialed case, so setting `SecurityMasks` threw "The property
+  'SecurityMasks' cannot be found on this object." The AD cmdlets follow the
+  referral natively via `-Server`/`-Credential`, so cross-domain and
+  cross-forest delegation now succeeds.
+
 ## [1.6.1] - 2026-07-22
 
 ### Fixed
@@ -191,7 +204,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.4.0...v1.5.0

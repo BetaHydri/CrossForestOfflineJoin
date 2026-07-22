@@ -21,12 +21,13 @@
 
     Least privilege: only the target OU is delegated, not the whole domain.
 
-    The script binds to the target OU via a domain-targeted LDAP path
-    (DirectoryEntry) rather than the AD: PowerShell drive. The AD: drive is
-    bound to the local host's own domain and returns "A referral was returned
-    from the server." for a DistinguishedName in a different (child or foreign)
-    domain. With -Server (a DC of the target domain) and optional -Credential
-    the delegation can therefore be applied remotely from the Admin-AD host.
+    The script reads and writes the target OU's security descriptor with the
+    ActiveDirectory module's Get-ADObject / Set-ADObject cmdlets rather than the
+    AD: PowerShell drive. The AD: drive is bound to the local host's own domain
+    and returns "A referral was returned from the server." for a
+    DistinguishedName in a different (child or foreign) domain. With -Server (a
+    DC of the target domain) and optional -Credential the cmdlets follow the
+    referral, so the delegation can be applied remotely from the Admin-AD host.
 
 .PARAMETER TargetOU
     DistinguishedName of the target OU in the resource forest.
@@ -94,50 +95,30 @@ $guidAllProperties = [guid]'00000000-0000-0000-0000-000000000000' # all
 $account = New-Object System.Security.Principal.NTAccount($TrusteeSamAccountName)
 $sid = $account.Translate([System.Security.Principal.SecurityIdentifier])
 
-# Build a domain-targeted LDAP path so cross-domain / cross-forest OUs resolve
-# without the AD: drive's "A referral was returned from the server." error.
+# Build the AD cmdlet parameters. -Server (a DC of the target domain) and the
+# optional -Credential let the delegation be applied remotely from the Admin-AD
+# host against a child domain or foreign forest: Get-ADObject / Set-ADObject
+# follow the referral that the AD: drive cannot.
+$adParams = @{ }
 if ($Server)
 {
-    $ldapPath = "LDAP://$Server/$TargetOU"
+    $adParams['Server'] = $Server
 }
-else
+if ($Credential -and $Credential -ne [System.Management.Automation.PSCredential]::Empty)
 {
-    $ldapPath = "LDAP://$TargetOU"
+    $adParams['Credential'] = $Credential
 }
 
 try
 {
-    if ($Credential -and $Credential -ne [System.Management.Automation.PSCredential]::Empty)
-    {
-        $entry = New-Object System.DirectoryServices.DirectoryEntry(
-            $ldapPath,
-            $Credential.UserName,
-            $Credential.GetNetworkCredential().Password,
-            [System.DirectoryServices.AuthenticationTypes]::Secure
-        )
-    }
-    else
-    {
-        $entry = New-Object System.DirectoryServices.DirectoryEntry($ldapPath)
-    }
-
-    # Force the bind first so a missing OU or a failed authentication surfaces
-    # here rather than at commit time. $entry.Options is $null until the entry
-    # is bound, so the SecurityMasks assignment must come afterwards.
-    $null = $entry.Guid
-
-    # Restrict the security descriptor to the DACL: reading it then does not
-    # require SeSecurityPrivilege (SACL) and CommitChanges writes back only the
-    # DACL, so no WriteOwner right is needed.
-    $entry.Options.SecurityMasks = [System.DirectoryServices.SecurityMasks]::Dacl
-    $entry.RefreshCache(@('ntSecurityDescriptor'))
+    $adObject = Get-ADObject -Identity $TargetOU -Properties 'nTSecurityDescriptor' @adParams
 }
 catch
 {
-    throw "Target OU '$TargetOU' could not be bound (path '$ldapPath'): $($_.Exception.Message)"
+    throw "Target OU '$TargetOU' could not be read (server '$Server'): $($_.Exception.Message)"
 }
 
-$acl = $entry.ObjectSecurity
+$acl = $adObject.nTSecurityDescriptor
 
 # 1) Create/Delete computer child on the OU itself.
 $aceCreate = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
@@ -175,7 +156,6 @@ $acl.AddAccessRule($aceWrite)
 
 if ($PSCmdlet.ShouldProcess($TargetOU, "Set delegation for '$TrusteeSamAccountName'"))
 {
-    $entry.ObjectSecurity = $acl
-    $entry.CommitChanges()
+    Set-ADObject -Identity $TargetOU -Replace @{ nTSecurityDescriptor = $acl } -Confirm:$false @adParams
     Write-Host "Delegation for '$TrusteeSamAccountName' set on '$TargetOU'." -ForegroundColor Green
 }
