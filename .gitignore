@@ -1,0 +1,19 @@
+# PowerShell / build artifacts
+*.log
+audit.log
+output/
+BuildOutput/
+*.nupkg
+
+# Secrets and local configuration overrides
+appsettings.local.psd1
+*.pfx
+*.cer.key
+
+# Editor / OS
+.vs/
+.vscode/*.local
+Thumbs.db
+desktop.ini
+*.tmp
+odj_*.tmp
