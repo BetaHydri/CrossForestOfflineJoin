@@ -465,9 +465,10 @@ interactively — no API key or scripting required. It is **disabled by default*
 - **Two authentication modes (`WebUi.AuthMode`).** The form authenticates the
   browser against Active Directory in one of two ways:
   - `'WindowsAd'` (**default**) — the service runs standalone on HTTPS. The
-    browser prompts for AD credentials (HTTP Basic over the existing TLS
-    channel) that Pode validates directly against Active Directory
-    (`Add-PodeAuthWindowsAd`). **No IIS is required**, so `/ui` works out of the
+    service serves a hosted HTML sign-in form; the submitted AD credentials are
+    validated directly against Active Directory (`Add-PodeAuthWindowsAd`) over
+    the existing TLS channel and backed by a server-side session cookie. **No
+    IIS is required**, so `/ui` works out of the
     box on a self-hosted Pode service.
   - `'IIS'` — the service runs behind IIS with Windows Authentication enabled
     (see *Hosting alternative: Windows Server with IIS*, Option A). IIS's
@@ -516,8 +517,8 @@ WebUi = @{
 ### Use it
 
 1. Browse to `https://<service-host>/ui` (or your custom `BasePath`). In the
-   default `WindowsAd` mode the browser prompts for AD credentials (HTTP Basic
-   over TLS); in `IIS` mode IIS prompts for Windows credentials. Either way,
+   default `WindowsAd` mode the service shows a hosted HTML sign-in form for AD
+   credentials; in `IIS` mode IIS prompts for Windows credentials. Either way,
    non-members of the admin group are rejected.
 2. Enter the computer name, pick a target from the drop-down (populated from
    `AllowedTargets`) and choose the output format — **blob** (Base64) or

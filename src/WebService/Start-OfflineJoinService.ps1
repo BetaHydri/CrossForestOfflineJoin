@@ -95,7 +95,8 @@ function Get-Sha256Hex
 # Structured audit-logging helpers (pure formatter + file/Event-Log writer).
 # Kept separate so they can be unit tested in isolation. Supports BSI
 # IT-Grundschutz OPS.1.1.5 (security-relevant events, log-injection safe).
-. (Join-Path -Path $PSScriptRoot -ChildPath 'OfflineJoinLogging.ps1')
+$loggingScriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'OfflineJoinLogging.ps1'
+. $loggingScriptPath
 
 function Write-OdjAudit
 {
@@ -153,9 +154,23 @@ function Write-OdjAudit
 
 # Web UI HTML builders (pure functions; kept separate for unit testing). Only
 # needed when WebUi is enabled, but always available to the Pode runspaces.
-. (Join-Path -Path $PSScriptRoot -ChildPath 'OfflineJoinWebUi.ps1')
+$webUiScriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'OfflineJoinWebUi.ps1'
+. $webUiScriptPath
 
 Start-PodeServer {
+
+    # Surface unhandled route/auth exceptions on the console instead of only
+    # returning a generic HTTP 500 page, so failures are diagnosable.
+    New-PodeLoggingMethod -Terminal | Enable-PodeErrorLogging
+
+    # Pode routes and auth handlers execute in separate runspaces that only
+    # auto-import functions defined in THIS script file. The audit-logging and
+    # HTML-builder helpers live in separately dot-sourced files, so their
+    # functions (Format-OdjAuditEvent, Get-OdjFormBody, Get-OdjLoginBody, etc.)
+    # are invisible to those runspaces and cause a generic HTTP 500. Registering
+    # the files via Use-PodeScript imports their functions into every runspace.
+    Use-PodeScript -Path $loggingScriptPath
+    Use-PodeScript -Path $webUiScriptPath
 
     # The certificate is looked up by thumbprint in a certificate store. The
     # store location defaults to LocalMachine (where the setup/install steps

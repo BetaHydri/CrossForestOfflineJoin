@@ -484,10 +484,11 @@ Skripting. Standardmaessig ist es **deaktiviert**.
 - **Zwei Authentifizierungsmodi (`WebUi.AuthMode`).** Das Formular
   authentifiziert den Browser auf eine von zwei Arten gegen Active Directory:
   - `'WindowsAd'` (**Standard**) — der Dienst laeuft eigenstaendig ueber HTTPS.
-    Der Browser fragt nach AD-Anmeldedaten (HTTP Basic ueber den bestehenden
-    TLS-Kanal), die Pode direkt gegen Active Directory prueft
-    (`Add-PodeAuthWindowsAd`). **Kein IIS erforderlich** — `/ui` funktioniert
-    sofort auf einem selbst gehosteten Pode-Dienst.
+    Der Dienst zeigt ein gehostetes HTML-Anmeldeformular; die uebermittelten
+    AD-Anmeldedaten prueft Pode direkt gegen Active Directory
+    (`Add-PodeAuthWindowsAd`) ueber den bestehenden TLS-Kanal, gesichert durch
+    ein serverseitiges Sitzungscookie. **Kein IIS erforderlich** - `/ui`
+    funktioniert sofort auf einem selbst gehosteten Pode-Dienst.
   - `'IIS'` — der Dienst laeuft hinter IIS mit aktivierter
     Windows-Authentifizierung (siehe *Hosting-Alternative: Windows Server mit
     IIS*, Variante A). Das ASP.NET-Core-Modul von IIS reicht die
@@ -537,9 +538,10 @@ WebUi = @{
 ### Verwenden
 
 1. `https://<Dienst-Host>/ui` (oder eigener `BasePath`) im Browser oeffnen. Im
-   Standardmodus `WindowsAd` fragt der Browser nach AD-Anmeldedaten (HTTP Basic
-   ueber TLS); im Modus `IIS` fragt IIS nach Windows-Anmeldedaten. In beiden
-   Faellen werden Nicht-Mitglieder der Admin-Gruppe abgewiesen.
+   Standardmodus `WindowsAd` zeigt der Dienst ein gehostetes
+   HTML-Anmeldeformular fuer AD-Anmeldedaten; im Modus `IIS` fragt IIS nach
+   Windows-Anmeldedaten. In beiden Faellen werden Nicht-Mitglieder der
+   Admin-Gruppe abgewiesen.
 2. Computernamen eingeben, ein Ziel aus dem Dropdown (aus `AllowedTargets`
    befuellt) waehlen und das Ausgabeformat waehlen — **blob** (Base64) oder
    **unattend** (XML-Fragment).

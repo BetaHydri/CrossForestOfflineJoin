@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-07-22
+
+### Fixed
+
+- `src/WebService/Start-OfflineJoinService.ps1`: the Web UI (and API) routes
+  returned a generic HTTP 500 (`The term 'Get-OdjFormBody' is not recognized`)
+  because Pode route/auth handlers run in separate runspaces that only
+  auto-import functions defined in the entry-point script itself. The audit
+  logging and HTML-builder helpers live in separately dot-sourced files
+  (`OfflineJoinLogging.ps1`, `OfflineJoinWebUi.ps1`), so their functions were
+  invisible to those runspaces. The helper scripts are now registered via
+  `Use-PodeScript`, which imports their functions into every runspace.
+- Added Pode terminal error logging (`Enable-PodeErrorLogging`) so unhandled
+  route/auth exceptions are surfaced on the console instead of only a bare 500.
+
+### Changed
+
+- `docs/quickstart.md`, `docs/schnellstart.md`: corrected the `WindowsAd` auth
+  description - the standalone mode serves a hosted HTML sign-in form (backed by
+  a server-side session cookie), not HTTP Basic.
+
 ## [1.6.5] - 2026-07-22
 
 ### Added
