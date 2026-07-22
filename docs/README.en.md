@@ -2,6 +2,14 @@
 
 Author: Jan Tiedemann
 
+[![Latest release](https://img.shields.io/github/v/release/BetaHydri/CrossForestOfflineJoin?label=Release&sort=semver)](https://github.com/BetaHydri/CrossForestOfflineJoin/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](../LICENSE)
+[![PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE.svg)](https://learn.microsoft.com/powershell/)
+
+> The version badge above is **dynamic** and always shows the latest published
+> release; clicking it opens the
+> [releases overview](https://github.com/BetaHydri/CrossForestOfflineJoin/releases).
+
 **CrossForestOfflineJoin** is a solution for the automated domain join of new
 VMware VMs into **multiple trusted AD forests** from a central **Admin-AD
 forest** — without the double-hop problem and without credentials on the target
@@ -38,12 +46,13 @@ in [solution-variants.md](solution-variants.md).
 
 ```mermaid
 flowchart LR
+    ADM[AD admin<br/>browser]
     subgraph VMware
         A[Aria / vRO automation]
         VM[New VM]
     end
     subgraph AdminAD[Admin-AD Forest]
-        SVC[ODJ web service<br/>gMSA]
+        SVC[ODJ web service gMSA<br/>API /api/v1/provision<br/>+ web UI /ui optional]
     end
     subgraph ResForests[Resource forests]
         DCA[DC Forest A]
@@ -51,6 +60,7 @@ flowchart LR
     end
 
     A -- POST /api/v1/provision (TLS + API key) --> SVC
+    ADM -- GET /ui (HTTPS, IIS Windows Auth, AD group) --> SVC
     SVC -- djoin /provision --> DCA
     SVC -- djoin /provision --> DCB
     SVC -- Blob / unattend.xml --> A
@@ -63,6 +73,7 @@ flowchart LR
 ```text
 OfflineJoinService/
 |-- README.md                          # German overview
+|-- install.ps1                        # Automated installer (optional)
 |-- docs/
 |   |-- README.en.md                   # English overview (this file)
 |   |-- loesungsvarianten.md           # Variant comparison + double-hop analysis (DE)
@@ -75,7 +86,9 @@ OfflineJoinService/
 |   |   `-- OfflineJoin.psm1
 |   `-- WebService/                    # REST service (Pode)
 |       |-- Start-OfflineJoinService.ps1
+|       |-- OfflineJoinWebUi.ps1        # HTML builders for the optional web UI
 |       `-- appsettings.psd1
+|-- tests/                             # Pester 5 tests (unit)
 `-- scripts/
     |-- New-OfflineJoinGmsa.ps1        # Create gMSA
     |-- Set-CrossForestOuDelegation.ps1# OU delegation in the target forest
@@ -88,6 +101,7 @@ OfflineJoinService/
 | File | Type | Purpose |
 |------|------|---------|
 | [README.md](../README.md) | Docs | German overview: problem, solution, architecture, setup. |
+| [install.ps1](../install.ps1) | Installer | Automated, re-runnable 9-stage installer (prerequisites, Pode, KDS key, hosts group, gMSA, OU delegation, config, service registration). Options `-EnableWebUi`, `-WebUiAdminGroup`, `-WebUiBasePath`. |
 | [docs/README.en.md](README.en.md) | Docs | This English overview. |
 | [docs/loesungsvarianten.md](loesungsvarianten.md) | Docs | Variant comparison (CredSSP/KCD/RBCD/ODJ/web service) + double-hop analysis (German). |
 | [docs/solution-variants.md](solution-variants.md) | Docs | English version of the variant comparison. |
@@ -95,8 +109,9 @@ OfflineJoinService/
 | [docs/quickstart.md](quickstart.md) | Docs | Installation quick-start with all prerequisites (English). |
 | [src/OfflineJoin/OfflineJoin.psd1](../src/OfflineJoin/OfflineJoin.psd1) | Module manifest | Metadata and export of the core functions. |
 | [src/OfflineJoin/OfflineJoin.psm1](../src/OfflineJoin/OfflineJoin.psm1) | Module | Wraps `djoin`: input validation, blob creation, unattend fragment. |
-| [src/WebService/Start-OfflineJoinService.ps1](../src/WebService/Start-OfflineJoinService.ps1) | Service | Pode REST service `POST /api/v1/provision` (TLS, API key, allow-list, audit). |
-| [src/WebService/appsettings.psd1](../src/WebService/appsettings.psd1) | Configuration | Endpoint, API client hashes, allow-list, audit path. |
+| [src/WebService/Start-OfflineJoinService.ps1](../src/WebService/Start-OfflineJoinService.ps1) | Service | Pode REST service `POST /api/v1/provision` (TLS, API key, allow-list, audit) plus optional web UI `GET /ui`. |
+| [src/WebService/OfflineJoinWebUi.ps1](../src/WebService/OfflineJoinWebUi.ps1) | Service component | HTML builders for the web UI (separated so they can be unit-tested; HTML-encoding against XSS). |
+| [src/WebService/appsettings.psd1](../src/WebService/appsettings.psd1) | Configuration | Endpoint, API client hashes, allow-list, audit path, `WebUi` block. |
 | [scripts/New-OfflineJoinGmsa.ps1](../scripts/New-OfflineJoinGmsa.ps1) | Script | Creates the gMSA service identity in the Admin-AD forest. |
 | [scripts/Set-CrossForestOuDelegation.ps1](../scripts/Set-CrossForestOuDelegation.ps1) | Script | Delegates the minimal rights to the gMSA per target OU in the resource forest. |
 | [scripts/New-OfflineDomainJoinBlob.ps1](../scripts/New-OfflineDomainJoinBlob.ps1) | Script | Creates an ODJ blob via CLI (without the web service). |
@@ -111,6 +126,9 @@ OfflineJoinService/
 | [New-OfflineDomainJoinBlob.ps1](../scripts/New-OfflineDomainJoinBlob.ps1) | Creates an **ODJ blob** via CLI (thin wrapper around the module function) — without the web service. Output as raw blob, unattend.xml fragment or metadata object. | Admin-AD server | Per new VM (manual/scripted, alternative to the web service) | `-Domain`, `-MachineName`, `-MachineOU`, `-OutputFormat` |
 | [Invoke-OfflineDomainJoinRequest.ps1](../scripts/Invoke-OfflineDomainJoinRequest.ps1) | Applies the blob **offline** on the new VM (`djoin /requestODJ`) — **no DC contact, no credentials**. Reads the blob from a file or a VMware `guestinfo` variable. | Target VM (first boot) | On first boot of the new VM | `-BlobPath` **or** `-GuestInfoKey`, `-NoReboot` |
 
+> The `tests/` folder holds Pester 5 unit tests for the core functions and the
+> web-UI HTML builders. Run them with `Invoke-Pester -Path ./tests`.
+
 ## Prerequisites
 
 - Forest trusts between Admin-AD and the resource forests.
@@ -124,6 +142,11 @@ OfflineJoinService/
 
 > For a complete, step-by-step guide including all prerequisites, see the
 > quick-start: [quickstart.md](quickstart.md).
+>
+> **Automated:** `install.ps1` sets up the whole solution in one run
+> (prerequisites, Pode, KDS key, gMSA, OU delegation, config, service
+> registration). Example including the optional web UI:
+> `\.install.ps1 -EnableWebUi -WebUiAdminGroup 'GG-ODJ-WebAdmins'`.
 >
 > Hosting note: Pode self-hosts HTTPS — **IIS is not required**. If you prefer
 > IIS, you can run it as a reverse proxy in front of Pode; see
@@ -197,6 +220,16 @@ Invoke-RestMethod -Method Post `
 Alternatively, obtain the blob as `outputFormat=unattend` and embed the XML
 fragment into the VMware template's unattend.xml (pass `offlineServicing`).
 
+### Via the web UI for AD admins (optional)
+
+For manual, ad-hoc joins the service can also serve a **browser form** at
+`https://<host>/ui`: a drop-down of the allowed domain/OU targets where the admin
+only types the computer name. The form is **disabled by default** and designed to
+run **behind IIS with Windows Authentication** — restricted to an AD group
+(`WebUi.AdminGroup`), with a CSRF token, server-side re-validation against the
+allow-list, and HTTPS. Enable it via the `WebUi` block in `appsettings.psd1` (or
+`install.ps1 -EnableWebUi`). Details:
+[quickstart.md#web-ui-for-ad-admins-optional](quickstart.md).
 ## Security
 
 - **Least privilege:** the gMSA only gets the right to create computer accounts
@@ -206,6 +239,10 @@ fragment into the VMware template's unattend.xml (pass `offlineServicing`).
 - **API hardening:** HTTPS, API key (stored as a SHA256 hash), allow-list,
   strict input validation (injection protection), audit log without secret
   content.
+- **Web UI hardening:** HTTPS only, IIS Windows Authentication, restricted to an
+  AD group (`Add-PodeAuthIIS`), anti-CSRF token, server-side re-validation
+  against the allow-list (the browser drop-down is never trusted), audit with the
+  authenticated Windows user.
 - **CredSSP is not used.**
 
 ## See Also
