@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   blob downloads as `<computername>.txt` and an unattend XML fragment downloads
   as `<computername>-unattend.xml`. The existing copy-on-click textarea is
   unchanged.
+- `docs/quickstart.md`, `docs/schnellstart.md`: expanded the apply step into an
+  **apply-and-verify** walkthrough covering the downloaded blob file
+  (`-BlobPath`), the unattend XML fragment, and post-join verification
+  (`systeminfo`, `nltest`, `Get-ADComputer`).
 
 ## [1.6.8] - 2026-07-22
 

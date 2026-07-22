@@ -237,6 +237,36 @@ Apply it on the target VM (first boot):
 .\scripts\Invoke-OfflineDomainJoinRequest.ps1 -GuestInfoKey 'guestinfo.odjblob'
 ```
 
+If you downloaded the blob from the Web UI result page (a `<computername>.txt`
+file), copy it to the target and apply it by path instead:
+
+```powershell
+.\scripts\Invoke-OfflineDomainJoinRequest.ps1 -BlobPath 'C:\Temp\RESA-WEB01.txt'
+```
+
+Under the hood this calls `djoin /requestODJ /loadfile <blob> /windowspath
+C:\Windows /localos`. If you prefer the **unattend** format, drop the downloaded
+`<computername>-unattend.xml` fragment into the
+`Microsoft-Windows-UnattendedJoin` component of your Sysprep/`unattend.xml` so it
+is applied during OOBE.
+
+Then reboot and confirm the join succeeded (no DC contact, no credentials):
+
+```powershell
+systeminfo | Select-String 'Domain'
+nltest /sc_query:res-a.example.com
+```
+
+On a DC of the target domain, confirm the computer object landed in the right OU:
+
+```powershell
+Get-ADComputer 'RESA-WEB01' -Server 'res-a.example.com' |
+    Select-Object Name, DistinguishedName
+```
+
+The blob is single-use and time-sensitive: apply it to a machine whose host name
+exactly matches the name you provisioned, before the account password rotates.
+
 ## Dry run: two-forest lab with a self-signed certificate
 
 For a risk-free test you can first run the whole installation as a **dry run**

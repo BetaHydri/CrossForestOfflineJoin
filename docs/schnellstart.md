@@ -247,6 +247,40 @@ Auf der Ziel-VM (First-Boot) anwenden:
 .\scripts\Invoke-OfflineDomainJoinRequest.ps1 -GuestInfoKey 'guestinfo.odjblob'
 ```
 
+Wurde der Blob ueber die Ergebnisseite der Web-UI heruntergeladen (eine Datei
+`<Computername>.txt`), diese auf das Ziel kopieren und stattdessen ueber den
+Pfad anwenden:
+
+```powershell
+.\scripts\Invoke-OfflineDomainJoinRequest.ps1 -BlobPath 'C:\Temp\RESA-WEB01.txt'
+```
+
+Intern ruft das `djoin /requestODJ /loadfile <Blob> /windowspath C:\Windows
+/localos` auf. Fuer das Format **unattend** das heruntergeladene Fragment
+`<Computername>-unattend.xml` in die Komponente
+`Microsoft-Windows-UnattendedJoin` der Sysprep-/`unattend.xml` einfuegen, damit
+es waehrend der OOBE angewandt wird.
+
+Danach neu starten und den Beitritt pruefen (kein DC-Kontakt, keine
+Anmeldedaten):
+
+```powershell
+systeminfo | Select-String 'Dom'
+nltest /sc_query:res-a.example.com
+```
+
+Auf einem DC der Zieldomaene pruefen, ob das Computerobjekt in der richtigen OU
+gelandet ist:
+
+```powershell
+Get-ADComputer 'RESA-WEB01' -Server 'res-a.example.com' |
+    Select-Object Name, DistinguishedName
+```
+
+Der Blob ist einmalig gueltig und zeitkritisch: auf eine Maschine anwenden,
+deren Hostname exakt dem provisionierten Namen entspricht, bevor das
+Kontopasswort rotiert.
+
 ## Trockentest: Zwei-Forest-Lab mit Self-Signed-Zertifikat
 
 Fuer einen risikofreien Test kannst du die komplette Installation zuerst als
