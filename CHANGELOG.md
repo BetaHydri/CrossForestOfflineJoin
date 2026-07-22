@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-07-22
+
+### Fixed
+
+- `src/WebService/Start-OfflineJoinService.ps1`: three Pode startup issues found
+  during lab bring-up on Pode 2.13.4.
+  - `Add-PodeEndpoint` now looks the server certificate up in
+    `LocalMachine\My` by default (new `$certStoreName` / `$certStoreLocation`).
+    Pode otherwise defaults to `CurrentUser\My` and cannot find a LocalMachine
+    certificate, so the HTTPS endpoint failed to bind.
+  - `Register-PodeEvent -Type Stop` now passes an explicit `-Name`
+    (`OfflineJoinServiceStop`); the parameter is mandatory in this Pode version
+    and the service threw on startup without it.
+  - `Add-PodeAuth` for the API-key scheme is now `-Sessionless`. Without it Pode
+    raised "Sessions are required to use session persistent authentication"
+    because no session middleware is enabled for the stateless REST API.
+
+### Added
+
+- `src/WebService/appsettings.psd1`: two optional `Endpoint` keys,
+  `CertificateStoreName` and `CertificateStoreLocation`, to override the default
+  `My` / `LocalMachine` certificate lookup when needed.
+
+### Documentation
+
+- `src/WebService/appsettings.psd1`: `AllowedTargets` now documents that
+  `MachineOU` must reference an OU/container that exists in the target domain
+  (`CN=Computers` for the built-in container, `OU=<name>` for a custom OU).
+  A non-existent DN makes `djoin /provision` fail with `0x2`.
+
 ## [1.6.3] - 2026-07-22
 
 ### Fixed
@@ -216,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.3...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.4...HEAD
+[1.6.4]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.0...v1.6.1

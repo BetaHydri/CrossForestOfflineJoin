@@ -5,6 +5,11 @@
         Port              = 8443
         # Thumbprint of a server certificate installed in LocalMachine\My.
         CertificateThumbprint = 'REPLACE-WITH-CERT-THUMBPRINT'
+        # Optional certificate store overrides. Pode defaults to CurrentUser\My,
+        # which cannot see a LocalMachine certificate, so the service defaults
+        # these to 'My' / 'LocalMachine'. Only set them to override that default.
+        # CertificateStoreName     = 'My'
+        # CertificateStoreLocation = 'LocalMachine'
     }
 
     # Allowed requesters (VMware automation). API keys are stored as a
@@ -21,6 +26,11 @@
 
     # Allow-list of permitted targets. Only the Forest/Domain/OU combinations
     # listed here may be provisioned.
+    # NOTE: MachineOU must be an OU (or container) that ACTUALLY EXISTS in the
+    # target domain, written with the correct object type prefix. The built-in
+    # computers container is 'CN=Computers' (not 'OU=Computers'); a custom OU is
+    # 'OU=<name>'. If the DN does not exist, djoin /provision fails with 0x2
+    # ("The system cannot find the file specified.").
     AllowedTargets = @(
         @{
             Domain      = 'res-a.example.com'
