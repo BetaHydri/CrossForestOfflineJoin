@@ -121,6 +121,10 @@ The service reads all its settings from `src/WebService/appsettings.psd1`
 | `AllowedTargets[].Domain` | FQDN of the destination domain. | Must match the `domain` field in the request. |
 | `AllowedTargets[].MachineOU` | Distinguished name of the OU the computer object is created in. | The gMSA must be delegated on this OU (step 4). |
 | `AllowedTargets[].NamePrefix` | Required prefix of the computer name. | A request is only allowed if `machineName` starts with this prefix. |
+| `WebUi.Enabled` | Enables the optional secured admin browser form. | Default `$false`. See *Web UI for AD admins* below. |
+| `WebUi.AuthMode` | How admins authenticate to the form. | `'WindowsAd'` (default, standalone HTTPS with a hosted AD login form validated via `Add-PodeAuthWindowsAd` + session cookie) or `'IIS'` (Windows identity forwarded by IIS). |
+| `WebUi.AdminGroup` | AD group whose members may open the form. | Default `'GG-ODJ-WebAdmins'`. The group must already exist (or use `install.ps1 -CreateWebUiAdminGroup`); everyone else is denied. |
+| `WebUi.BasePath` | URL base path the form is served under. | Default `'/ui'`. |
 | `AuditLogPath` | Path of the audit log file. | The directory is created automatically. No blob/secret content is logged. |
 | `Logging.EventLog.Enabled` | Additionally mirrors every audit event to the Windows Event Log. | Default `$false`. Set to `$true` for central collection via Windows Event Forwarding / SIEM. |
 | `Logging.EventLog.LogName` | Event log to write to. | Default `'Application'`. |

@@ -127,6 +127,10 @@ Datei uebergeben werden. Nach einer Aenderung den Dienst neu starten.
 | `AllowedTargets[].Domain` | FQDN der Zieldomaene. | Muss zum Feld `domain` der Anfrage passen. |
 | `AllowedTargets[].MachineOU` | Distinguished Name der OU, in der das Computerobjekt angelegt wird. | Die gMSA muss auf dieser OU delegiert sein (Schritt 4). |
 | `AllowedTargets[].NamePrefix` | Erforderliches Praefix des Computernamens. | Eine Anfrage ist nur erlaubt, wenn `machineName` mit diesem Praefix beginnt. |
+| `WebUi.Enabled` | Aktiviert das optionale, abgesicherte Admin-Browserformular. | Standard `$false`. Siehe *Web-UI fuer AD-Admins* weiter unten. |
+| `WebUi.AuthMode` | Wie sich Admins am Formular authentifizieren. | `'WindowsAd'` (Standard, eigenstaendiges HTTPS mit gehostetem AD-Anmeldeformular, geprueft ueber `Add-PodeAuthWindowsAd` + Session-Cookie) oder `'IIS'` (Windows-Identitaet wird von IIS weitergereicht). |
+| `WebUi.AdminGroup` | AD-Gruppe, deren Mitglieder das Formular oeffnen duerfen. | Standard `'GG-ODJ-WebAdmins'`. Die Gruppe muss bereits existieren (oder `install.ps1 -CreateWebUiAdminGroup`); alle anderen werden abgewiesen. |
+| `WebUi.BasePath` | URL-Basispfad, unter dem das Formular bereitgestellt wird. | Standard `'/ui'`. |
 | `AuditLogPath` | Pfad der Audit-Log-Datei. | Das Verzeichnis wird automatisch erstellt. Es werden keine Blob-/Geheimnisinhalte protokolliert. |
 | `Logging.EventLog.Enabled` | Spiegelt jedes Audit-Ereignis zusaetzlich ins Windows-Ereignisprotokoll. | Standard `$false`. Fuer zentrale Sammlung per Windows Event Forwarding / SIEM auf `$true` setzen. |
 | `Logging.EventLog.LogName` | Ereignisprotokoll (Log), in das geschrieben wird. | Standard `'Application'`. |

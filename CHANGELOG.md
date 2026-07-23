@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.10] - 2026-07-23
+
 ### Added
 
 - `docs/multi-cloud.md` (DE) and `docs/multi-cloud.en.md` (EN): a guide showing
@@ -14,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   offline-domain-join **multi-cloud Windows VMs** (Azure, AWS, GCP), with Mermaid
   diagrams and end-to-end samples. Linked from the READMEs (top callout,
   platform-independent note, resource tables, See Also) and the docs index.
+- `docs/quickstart.md`, `docs/schnellstart.md`: the **configuration reference**
+  table now documents the `WebUi` block (`WebUi.Enabled`, `WebUi.AuthMode`,
+  `WebUi.AdminGroup`, `WebUi.BasePath`), including the two authentication modes
+  (`'WindowsAd'` standalone with a hosted `Add-PodeAuthWindowsAd` login form +
+  session cookie, and `'IIS'`). Previously the block was only described in the
+  dedicated Web UI section but missing from the settings reference.
 
 ## [1.6.9] - 2026-07-22
 
@@ -358,7 +366,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.5...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.10...HEAD
+[1.6.10]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.9...v1.6.10
+[1.6.9]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.8...v1.6.9
+[1.6.8]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.7...v1.6.8
+[1.6.7]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.6...v1.6.7
+[1.6.6]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.5...v1.6.6
 [1.6.5]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.4...v1.6.5
 [1.6.4]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.2...v1.6.3
