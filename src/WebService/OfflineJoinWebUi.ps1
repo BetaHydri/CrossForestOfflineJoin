@@ -51,6 +51,10 @@ function Get-OdjHtmlPage
     button { margin-top:1.5rem; padding:.6rem 1.2rem; background:#0067b8; color:#fff; border:0; border-radius:4px; font-size:1rem; cursor:pointer; }
     button:hover { background:#005a9e; }
     .meta { color:#666; font-size:.85rem; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.5rem; }
+    .logout { margin:0; }
+    .logout button { margin:0; padding:.35rem .8rem; font-size:.8rem; background:#666; }
+    .logout button:hover { background:#4d4d4d; }
     .err { background:#fde7e9; border:1px solid #d13438; color:#a4262c; padding:.6rem .8rem; border-radius:4px; margin-bottom:1rem; }
     textarea { width:100%; height:9rem; font-family:Consolas,monospace; font-size:.8rem; }
     a { color:#0067b8; }
@@ -63,6 +67,36 @@ $Body
 </body>
 </html>
 "@
+}
+
+function Get-OdjLogoutForm
+{
+    <#
+    .SYNOPSIS
+        Builds the sign-out form posted to <BasePath>/logout. Only rendered in
+        standalone session mode (WebUi.AuthMode = 'WindowsAd'); under IIS the
+        Windows session is owned by the browser/IIS, so no in-app logout applies.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param
+    (
+        [Parameter(Mandatory)]
+        [string]
+        $BasePath,
+
+        [Parameter()]
+        [switch]
+        $ShowLogout
+    )
+
+    if (-not $ShowLogout)
+    {
+        return ''
+    }
+
+    $action = [System.Net.WebUtility]::HtmlEncode($BasePath.TrimEnd('/') + '/logout')
+    return "<form method=`"post`" action=`"$action`" class=`"logout`"><button type=`"submit`">Sign out</button></form>"
 }
 
 function Get-OdjLoginBody
@@ -136,7 +170,11 @@ function Get-OdjFormBody
 
         [Parameter()]
         [string]
-        $ErrorMessage
+        $ErrorMessage,
+
+        [Parameter()]
+        [switch]
+        $ShowLogout
     )
 
     $options = ''
@@ -155,10 +193,11 @@ function Get-OdjFormBody
 
     $userEnc = [System.Net.WebUtility]::HtmlEncode($User)
     $tokenEnc = [System.Net.WebUtility]::HtmlEncode($CsrfToken)
+    $logoutHtml = Get-OdjLogoutForm -BasePath $BasePath -ShowLogout:$ShowLogout
 
     return @"
 <h1>Offline Domain Join</h1>
-<p class="meta">Signed in as <strong>$userEnc</strong></p>
+<div class="topbar"><span class="meta">Signed in as <strong>$userEnc</strong></span>$logoutHtml</div>
 $errBlock
 <form method="post" action="$BasePath/provision">
   <input type="hidden" name="csrf" value="$tokenEnc" />
@@ -206,7 +245,11 @@ function Get-OdjResultBody
 
         [Parameter()]
         [string]
-        $Format = 'blob'
+        $Format = 'blob',
+
+        [Parameter()]
+        [switch]
+        $ShowLogout
     )
 
     $nameEnc = [System.Net.WebUtility]::HtmlEncode($MachineName)
@@ -227,10 +270,11 @@ function Get-OdjResultBody
 
     $fileNameJs = $fileName -replace '\\', '\\' -replace "'", "\'"
     $mimeJs = $mimeType -replace "'", "\'"
+    $logoutHtml = Get-OdjLogoutForm -BasePath $BasePath -ShowLogout:$ShowLogout
 
     return @"
 <h1>Result</h1>
-<p class="meta">Computer <strong>$nameEnc</strong> in <strong>$domainEnc</strong></p>
+<div class="topbar"><span class="meta">Computer <strong>$nameEnc</strong> in <strong>$domainEnc</strong></span>$logoutHtml</div>
 <label>Provisioning data</label>
 <textarea id="odjPayload" readonly onclick="this.select()">$payloadEnc</textarea>
 <button type="button" id="odjDownload">Download</button>

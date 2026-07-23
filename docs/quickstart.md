@@ -159,6 +159,26 @@ ApiClients = @(
 > `appsettings.psd1` (or `appsettings.local.psd1`) directly, generating one hash
 > per key as shown above.
 
+### Managing and rotating API keys
+
+- **Only the hash is stored.** `ApiKeySha256` is a one-way SHA-256 hash; the
+  clear-text key **cannot** be recovered from the configuration. The service
+  never stores or needs the clear text — it only hashes the incoming
+  `X-Api-Key` and compares.
+- **The caller keeps the clear-text key.** The calling automation (VMware Aria,
+  Terraform, Ansible, ...) must send the clear-text key in the `X-Api-Key`
+  header on every request, so keep it in that system's secret store — not in
+  your head.
+- **Adding a client never overwrites an existing one** when you edit the array
+  by hand: each `ApiClients` entry is independent. **But re-running `install.ps1`
+  with `-ApiClientName`/`-ApiKey` regenerates the whole config file and writes
+  only that single client** — so add further clients by editing the `ApiClients`
+  array directly, not by re-running the installer.
+- **Rotating a key.** Generate a new key, compute its hash, replace the
+  `ApiKeySha256` of that entry and hand the new key to the caller. Other clients
+  are unaffected. If a clear-text key is lost it cannot be recovered from the
+  hash — rotate it.
+
 ### Targeting multiple OUs in the same destination domain
 
 Yes — a destination domain can use **several target OUs**. Each `AllowedTargets`
@@ -537,6 +557,11 @@ interactively — no API key or scripting required. It is **disabled by default*
   echoed on submit, backed by Pode session middleware.
 - **Audited.** Form actions are written to the audit log as `ALLOW-UI`,
   `DENY-UI` and `ERROR-UI` lines (no blob content is logged).
+- **Session logout (standalone mode).** In `WebUi.AuthMode = 'WindowsAd'` the
+  form and result pages show a **Sign out** button that ends the server-side
+  session (`POST <BasePath>/logout`). Under `'IIS'` the Windows session is owned
+  by IIS / the browser, so no in-app logout button is rendered (close the browser
+  or use the IIS/SSO sign-out).
 
 ### Enable it
 

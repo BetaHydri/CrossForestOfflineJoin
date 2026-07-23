@@ -65,6 +65,34 @@ Describe 'Get-OdjFormBody' {
         $body | Should -Not -BeLike '*<option value="0"*'
         $body | Should -BeLike '*<select id="targetIndex"*'
     }
+
+    It 'Renders a sign-out form only when -ShowLogout is set' {
+        $withLogout = Get-OdjFormBody -Targets $script:Targets -CsrfToken 'x' -User 'u' -BasePath '/ui' -ShowLogout
+        $withLogout | Should -BeLike '*action="/ui/logout"*'
+        $withLogout | Should -BeLike '*Sign out*'
+
+        $withoutLogout = Get-OdjFormBody -Targets $script:Targets -CsrfToken 'x' -User 'u' -BasePath '/ui'
+        $withoutLogout | Should -Not -BeLike '*/logout*'
+    }
+}
+
+Describe 'Get-OdjLogoutForm' {
+
+    It 'Returns an empty string when -ShowLogout is not set' {
+        Get-OdjLogoutForm -BasePath '/ui' | Should -BeExactly ''
+    }
+
+    It 'Posts the sign-out form to <BasePath>/logout' {
+        $html = Get-OdjLogoutForm -BasePath '/ui' -ShowLogout
+        $html | Should -BeLike '*method="post"*'
+        $html | Should -BeLike '*action="/ui/logout"*'
+        $html | Should -BeLike '*Sign out*'
+    }
+
+    It 'Normalizes a trailing slash in the base path' {
+        $html = Get-OdjLogoutForm -BasePath '/admin/' -ShowLogout
+        $html | Should -BeLike '*action="/admin/logout"*'
+    }
 }
 
 Describe 'Get-OdjResultBody' {
@@ -81,5 +109,13 @@ Describe 'Get-OdjResultBody' {
         $body = Get-OdjResultBody -MachineName 'PC1' -Domain 'd' -Payload '</textarea><script>bad()</script>' -BasePath '/ui'
         $body | Should -BeLike '*&lt;/textarea&gt;&lt;script&gt;bad()&lt;/script&gt;*'
         $body | Should -Not -BeLike '*</textarea><script>bad()*'
+    }
+
+    It 'Renders a sign-out form only when -ShowLogout is set' {
+        $withLogout = Get-OdjResultBody -MachineName 'PC1' -Domain 'd' -Payload 'x' -BasePath '/ui' -ShowLogout
+        $withLogout | Should -BeLike '*action="/ui/logout"*'
+
+        $withoutLogout = Get-OdjResultBody -MachineName 'PC1' -Domain 'd' -Payload 'x' -BasePath '/ui'
+        $withoutLogout | Should -Not -BeLike '*/logout*'
     }
 }

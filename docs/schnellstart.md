@@ -166,6 +166,27 @@ ApiClients = @(
 > in `appsettings.psd1` (oder `appsettings.local.psd1`) direkt bearbeitet wird —
 > pro Schluessel ein Hash wie oben gezeigt.
 
+### API-Schluessel verwalten und rotieren
+
+- **Nur der Hash wird gespeichert.** `ApiKeySha256` ist ein Einweg-SHA256-Hash;
+  der Klartext-Schluessel kann aus der Konfiguration **nicht** zurueckgerechnet
+  werden. Der Dienst speichert und braucht den Klartext nie — er hasht nur den
+  eingehenden `X-Api-Key` und vergleicht.
+- **Der Aufrufer haelt den Klartext-Schluessel.** Das aufrufende
+  Automatisierungssystem (VMware Aria, Terraform, Ansible, ...) muss den
+  Klartext-Schluessel bei jedem Request im `X-Api-Key`-Header senden — also im
+  Secret-Store dieses Systems aufbewahren, nicht "im Kopf".
+- **Einen Client hinzufuegen ueberschreibt keinen bestehenden**, wenn das Array
+  von Hand bearbeitet wird: jeder `ApiClients`-Eintrag ist eigenstaendig. **Ein
+  erneuter Lauf von `install.ps1` mit `-ApiClientName`/`-ApiKey` regeneriert
+  jedoch die gesamte Konfigurationsdatei und schreibt nur diesen einen Client**
+  — weitere Clients daher direkt im `ApiClients`-Array ergaenzen, nicht ueber
+  einen erneuten Installer-Lauf.
+- **Schluessel rotieren.** Neuen Schluessel erzeugen, dessen Hash berechnen, den
+  `ApiKeySha256` des Eintrags ersetzen und den neuen Schluessel dem Aufrufer
+  geben. Andere Clients sind nicht betroffen. Ist ein Klartext-Schluessel
+  verloren, laesst er sich aus dem Hash nicht wiederherstellen — dann rotieren.
+
 ### Mehrere OUs in derselben Zieldomaene ansprechen
 
 Ja — eine Zieldomaene kann **mehrere Ziel-OUs** verwenden. Jeder
@@ -563,6 +584,12 @@ Skripting. Standardmaessig ist es **deaktiviert**.
   das beim Absenden zurueckgegeben werden muss (Pode-Session-Middleware).
 - **Auditiert.** Formularaktionen werden als `ALLOW-UI`-, `DENY-UI`- und
   `ERROR-UI`-Zeilen protokolliert (kein Blob-Inhalt wird geloggt).
+- **Sitzungs-Logout (eigenstaendiger Modus).** Bei
+  `WebUi.AuthMode = 'WindowsAd'` zeigen Formular- und Ergebnisseite einen
+  **Sign out**-Button, der die serverseitige Sitzung beendet
+  (`POST <BasePath>/logout`). Bei `'IIS'` gehoert die Windows-Sitzung IIS bzw.
+  dem Browser, daher wird kein In-App-Logout-Button angezeigt (Browser
+  schliessen bzw. IIS/SSO-Abmeldung nutzen).
 
 ### Aktivieren
 

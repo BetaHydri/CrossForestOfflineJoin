@@ -385,16 +385,18 @@ Start-PodeServer {
         Add-PodeRoute -Method Get -Path $uiBasePath @uiRouteAuth -ScriptBlock {
             $cfg = $using:config
             $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
+            $showLogout = ([string]$using:uiAuthMode -ne 'IIS')
             $token = [guid]::NewGuid().ToString('N')
             $WebEvent.Session.Data.csrf = $token
             $user = [string]$WebEvent.Auth.User.Username
-            $body = Get-OdjFormBody -Targets @($cfg.AllowedTargets) -CsrfToken $token -User $user -BasePath $basePath
+            $body = Get-OdjFormBody -Targets @($cfg.AllowedTargets) -CsrfToken $token -User $user -BasePath $basePath -ShowLogout:$showLogout
             Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Offline Domain Join' -Body $body)
         }
 
         Add-PodeRoute -Method Post -Path "$uiBasePath/provision" @uiRouteAuth -ScriptBlock {
             $cfg = $using:config
             $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
+            $showLogout = ([string]$using:uiAuthMode -ne 'IIS')
             $user = [string]$WebEvent.Auth.User.Username
             $ip = Get-OdjClientAddress -WebEvent $WebEvent
 
@@ -427,7 +429,7 @@ Start-PodeServer {
             $formToken = $expected
             $renderError = {
                 param($msg)
-                $b = Get-OdjFormBody -Targets $allowed -CsrfToken $formToken -User $user -BasePath $basePath -ErrorMessage $msg
+                $b = Get-OdjFormBody -Targets $allowed -CsrfToken $formToken -User $user -BasePath $basePath -ErrorMessage $msg -ShowLogout:$showLogout
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Offline Domain Join' -Body $b)
             }
 
@@ -471,7 +473,7 @@ Start-PodeServer {
                     $result.BlobBase64
                 }
 
-                $body = Get-OdjResultBody -MachineName $result.MachineName -Domain $result.Domain -Payload $payload -BasePath $basePath -Format $outputFormat
+                $body = Get-OdjResultBody -MachineName $result.MachineName -Domain $result.Domain -Payload $payload -BasePath $basePath -Format $outputFormat -ShowLogout:$showLogout
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Result' -Body $body)
             }
             catch

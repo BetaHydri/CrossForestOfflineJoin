@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-23
+
+### Added
+
+- Web UI: a **Sign out** button on the form and result pages that ends the
+  server-side session (`POST <BasePath>/logout`), shown only in
+  `WebUi.AuthMode = 'WindowsAd'` (standalone) mode. New `Get-OdjLogoutForm`
+  builder plus a `-ShowLogout` switch on `Get-OdjFormBody` / `Get-OdjResultBody`,
+  wired up from the `/ui`, provision-error and result render sites.
+- `tests/Unit/OfflineJoinWebUi.Tests.ps1`: coverage for `Get-OdjLogoutForm` and
+  the conditional logout button on the form and result pages.
+
+### Changed
+
+- `docs/quickstart.md`, `docs/schnellstart.md`: new **Managing and rotating API
+  keys** section (one-way SHA-256 hashing, the caller keeps the clear-text key,
+  adding vs. rotating clients, and the warning that re-running `install.ps1`
+  overwrites the whole `ApiClients` block). Documented the Web UI **Sign out**
+  button in the security model (standalone mode only; IIS/SSO handles sign-out
+  otherwise).
+
 ## [1.6.11] - 2026-07-23
 
 ### Changed
@@ -376,7 +397,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.11...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.11...v1.7.0
 [1.6.11]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.9...v1.6.10
 [1.6.9]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.8...v1.6.9
