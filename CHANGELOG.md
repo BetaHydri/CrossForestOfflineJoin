@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `SECURITY.md`: security policy documenting the community-maintained
+  (best-effort) support model, supported versions, the private vulnerability
+  reporting channel, best-effort response targets, and coordinated disclosure.
+  Serves as the BSI IT-Grundschutz evidence for "maintenance ensured via
+  community support".
+
 ## [1.7.2] - 2026-07-23
 
 ### Security
