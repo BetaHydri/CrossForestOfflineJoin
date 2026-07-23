@@ -142,7 +142,22 @@ clear text. Create the hash with:
 ```
 
 Add more callers by adding further entries to `ApiClients`, each with its own
-`Name` and `ApiKeySha256`.
+`Name` and `ApiKeySha256`. The endpoint matches the presented `X-Api-Key`
+against **every** entry, so any number of clients can be authorised side by side
+(the matched `Name` is written to the audit log):
+
+```powershell
+ApiClients = @(
+    @{ Name = 'vmware-aria-automation'; ApiKeySha256 = '<sha256-of-key-1>' }
+    @{ Name = 'terraform-pipeline';     ApiKeySha256 = '<sha256-of-key-2>' }
+    @{ Name = 'ansible-awx';            ApiKeySha256 = '<sha256-of-key-3>' }
+)
+```
+
+> The installer only writes the **first** client (from `-ApiClientName` /
+> `-ApiKey`). Additional callers are added by editing the `ApiClients` array in
+> `appsettings.psd1` (or `appsettings.local.psd1`) directly, generating one hash
+> per key as shown above.
 
 ### Targeting multiple OUs in the same destination domain
 

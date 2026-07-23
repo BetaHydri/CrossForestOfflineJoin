@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `docs/quickstart.md`, `docs/schnellstart.md`: clarified that the REST endpoint
+  supports **multiple API clients** — `ApiClients` is an array and the presented
+  `X-Api-Key` is matched against every entry. Added a concrete multi-client
+  example and a note that `install.ps1` only writes the first client (further
+  callers are added by editing the `ApiClients` array directly).
+
 ## [1.6.10] - 2026-07-23
 
 ### Added

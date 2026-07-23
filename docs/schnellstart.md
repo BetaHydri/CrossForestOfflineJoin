@@ -148,7 +148,23 @@ den Klartext. Hash erzeugen mit:
 ```
 
 Weitere Aufrufer hinzufuegen, indem weitere Eintraege zu `ApiClients`
-hinzugefuegt werden — jeder mit eigenem `Name` und `ApiKeySha256`.
+hinzugefuegt werden — jeder mit eigenem `Name` und `ApiKeySha256`. Der Endpunkt
+vergleicht den praesentierten `X-Api-Key` gegen **jeden** Eintrag, sodass
+beliebig viele Clients nebeneinander zugelassen sein koennen (der getroffene
+`Name` wird ins Audit-Log geschrieben):
+
+```powershell
+ApiClients = @(
+    @{ Name = 'vmware-aria-automation'; ApiKeySha256 = '<sha256-von-key-1>' }
+    @{ Name = 'terraform-pipeline';     ApiKeySha256 = '<sha256-von-key-2>' }
+    @{ Name = 'ansible-awx';            ApiKeySha256 = '<sha256-von-key-3>' }
+)
+```
+
+> Der Installer schreibt nur den **ersten** Client (aus `-ApiClientName` /
+> `-ApiKey`). Weitere Aufrufer werden hinzugefuegt, indem das `ApiClients`-Array
+> in `appsettings.psd1` (oder `appsettings.local.psd1`) direkt bearbeitet wird —
+> pro Schluessel ein Hash wie oben gezeigt.
 
 ### Mehrere OUs in derselben Zieldomaene ansprechen
 
