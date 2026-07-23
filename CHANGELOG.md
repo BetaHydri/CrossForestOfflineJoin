@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-07-23
+
+### Fixed
+
+- Web UI login: the red **"Sign-in failed"** banner no longer appears on the
+  first `/ui` visit or right after signing out. Pode reuses the auth `FailureUrl`
+  for every unauthenticated redirect (first visit, logout and rejected login), so
+  the previous `?failed=1` query flag lit the banner in all three cases. The
+  banner is now driven by Pode's `auth-error` flash message, which is set only
+  when an actual login POST is rejected — i.e. only for a wrong user name or
+  password.
+
 ## [1.7.0] - 2026-07-23
 
 ### Added
@@ -397,7 +409,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.11...v1.7.0
 [1.6.11]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.9...v1.6.10

@@ -356,9 +356,16 @@ Start-PodeServer {
             # Standalone: hosted HTML login form. Credentials are validated
             # against Active Directory over the TLS channel, restricted to
             # AdminGroup, and backed by a server-side session cookie.
+            #
+            # FailureUrl is a plain path (no query flag): Pode redirects here for
+            # EVERY unauthenticated case - the first /ui visit, a logout, AND a
+            # rejected login. Encoding a 'failed' flag in this URL would light up
+            # the error banner on all three. Instead, Pode adds an 'auth-error'
+            # flash message ONLY when an actual login POST is rejected (see the
+            # login GET handler below), so the banner shows only for bad creds.
             New-PodeAuthScheme -Form |
                 Add-PodeAuthWindowsAd -Name 'WebUiAuth' -Groups @($config.WebUi.AdminGroup) `
-                    -FailureUrl "$uiBasePath/login?failed=1" -SuccessUrl $uiBasePath
+                    -FailureUrl "$uiBasePath/login" -SuccessUrl $uiBasePath
 
             # NOTE: the protected UI routes must NOT be flagged with -Login.
             # A Pode -Login route allows anonymous GET so it can render a sign-in
@@ -372,7 +379,12 @@ Start-PodeServer {
             Add-PodeRoute -Method Get -Path "$uiBasePath/login" -Authentication 'WebUiAuth' -Login -ScriptBlock {
                 $cfg = $using:config
                 $basePath = if ($cfg.WebUi.BasePath) { $cfg.WebUi.BasePath } else { '/ui' }
-                $err = if ($WebEvent.Query.failed) { 'Sign-in failed. Check your credentials or contact an administrator.' } else { $null }
+                # Pode stores rejected-login errors in the 'auth-error' flash
+                # (session-scoped, one-shot). It is set only when a login POST is
+                # actually rejected - never on the first visit or after logout -
+                # so the red banner appears only for wrong user/password.
+                $failed = @(Get-PodeFlashMessage -Name 'auth-error').Count -gt 0
+                $err = if ($failed) { 'Sign-in failed. Check your credentials or contact an administrator.' } else { $null }
                 $body = Get-OdjLoginBody -BasePath $basePath -ErrorMessage $err
                 Write-PodeHtmlResponse -Value (Get-OdjHtmlPage -Title 'Sign in' -Body $body)
             }
