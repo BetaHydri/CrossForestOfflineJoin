@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.11] - 2026-07-23
+
 ### Changed
 
 - `docs/quickstart.md`, `docs/schnellstart.md`: clarified that the REST endpoint
@@ -374,7 +376,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   short-lived, and temporary files are securely wiped.
 - CredSSP is explicitly not used.
 
-[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.10...HEAD
+[Unreleased]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.11...HEAD
+[1.6.11]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.9...v1.6.10
 [1.6.9]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.8...v1.6.9
 [1.6.8]: https://github.com/BetaHydri/CrossForestOfflineJoin/compare/v1.6.7...v1.6.8
