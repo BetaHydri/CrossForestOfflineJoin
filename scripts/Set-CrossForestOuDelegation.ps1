@@ -14,7 +14,14 @@
 
       - Create computer objects (Create Child: computer)
       - Reset Password on descendant computer objects
-      - Write account restrictions / DNS host name / SPN
+      - Validated write to DNS host name
+      - Validated write to servicePrincipalName
+      - Write Account Restrictions (updates userAccountControl)
+
+    These are Microsoft's least-privilege permissions for joining a computer
+    to the domain (reusing/updating a computer account). The broad
+    "Write all properties" right is deliberately NOT used - only the specific
+    attributes djoin needs are delegated.
 
     A (at least incoming) forest trust from the target forest to the Admin-AD
     forest is required so that the foreign identity can be resolved.
@@ -87,9 +94,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Well-known schema GUIDs
-$guidComputerClass = [guid]'bf967a86-0de6-11d0-a285-00aa003049e2' # computer
+$guidComputerClass = [guid]'bf967a86-0de6-11d0-a285-00aa003049e2' # computer class
 $guidResetPassword = [guid]'00299570-246d-11d0-a768-00aa006e0529' # extended right: Reset Password
-$guidAllProperties = [guid]'00000000-0000-0000-0000-000000000000' # all
+$guidValidatedDns = [guid]'72e39547-7b18-11d1-adef-00c04fd8d5cd' # validated write: DNS host name
+$guidValidatedSpn = [guid]'f3a64788-5306-11d1-a9c5-0000f80367c1' # validated write: servicePrincipalName
+$guidAccountRestrictions = [guid]'4c164200-20c0-11d0-a768-00aa006e0529' # property set: Account Restrictions (userAccountControl)
 
 # Resolve the foreign principal (requires the trust + name resolution).
 $account = New-Object System.Security.Principal.NTAccount($TrusteeSamAccountName)
@@ -139,20 +148,45 @@ $aceReset = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
     $guidComputerClass
 )
 
-# 3) Write all properties on descendant computer objects
-#    (covers dNSHostName, servicePrincipalName, userAccountControl).
-$aceWrite = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+# 3) Least-privilege writes on descendant computer objects. Instead of the
+#    broad "Write all properties", only the specific attributes djoin needs
+#    are delegated (per Microsoft's domain-join permission guidance):
+#      a) Validated write to DNS host name  (Self)
+#      b) Validated write to servicePrincipalName  (Self)
+#      c) Write Account Restrictions property set  (WriteProperty ->
+#         userAccountControl)
+$aceValidatedDns = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+    $sid,
+    [System.DirectoryServices.ActiveDirectoryRights]::Self,
+    [System.Security.AccessControl.AccessControlType]::Allow,
+    $guidValidatedDns,
+    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
+    $guidComputerClass
+)
+
+$aceValidatedSpn = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
+    $sid,
+    [System.DirectoryServices.ActiveDirectoryRights]::Self,
+    [System.Security.AccessControl.AccessControlType]::Allow,
+    $guidValidatedSpn,
+    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
+    $guidComputerClass
+)
+
+$aceAccountRestrictions = New-Object System.DirectoryServices.ActiveDirectoryAccessRule(
     $sid,
     [System.DirectoryServices.ActiveDirectoryRights]::WriteProperty,
     [System.Security.AccessControl.AccessControlType]::Allow,
-    $guidAllProperties,
+    $guidAccountRestrictions,
     [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
     $guidComputerClass
 )
 
 $acl.AddAccessRule($aceCreate)
 $acl.AddAccessRule($aceReset)
-$acl.AddAccessRule($aceWrite)
+$acl.AddAccessRule($aceValidatedDns)
+$acl.AddAccessRule($aceValidatedSpn)
+$acl.AddAccessRule($aceAccountRestrictions)
 
 if ($PSCmdlet.ShouldProcess($TargetOU, "Set delegation for '$TrusteeSamAccountName'"))
 {

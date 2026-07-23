@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `Set-CrossForestOuDelegation.ps1` now grants only Microsoft's least-privilege
+  domain-join permission set on descendant computer objects instead of the broad
+  **Write all properties** right. The delegated writes are now scoped to
+  *Validated write to DNS host name*, *Validated write to servicePrincipalName*
+  and *Write Account Restrictions* (userAccountControl), plus the existing
+  *Reset Password* extended right and *Create Child: computer* on the OU.
+
 ## [1.7.1] - 2026-07-23
 
 ### Fixed
